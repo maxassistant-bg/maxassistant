@@ -56,26 +56,18 @@ border-bottom:1px solid var(--card-border);
 display:flex;
 align-items:center;
 justify-content:space-between;
-padding:12px 0;
+padding:20px 0;
 gap:25px;
 }
 
-.logo img{
-height:82px;
-width:auto;
-display:block;
-filter:drop-shadow(0 0 22px rgba(155,44,255,.45));
-transition:.25s ease;
-}
-width:auto;
-display:block;
-filter:drop-shadow(0 0 18px rgba(155,44,255,.35));
-transition:.25s ease;
-}
-
-.logo img:hover{
-transform:scale(1.03);
-filter:drop-shadow(0 0 28px rgba(155,44,255,.55));
+.logo{
+font-size:30px;
+font-weight:800;
+text-decoration:none;
+letter-spacing:-.5px;
+background:linear-gradient(135deg,#fff,var(--purple-soft));
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
 }
 
 nav ul{
@@ -358,12 +350,4 @@ align-items:flex-start;
 font-size:38px;
 }
 
-}
-.hero-logo{
-max-width:780px;
-width:100%;
-height:auto;
-display:block;
-margin:0 auto 35px;
-filter:drop-shadow(0 0 35px rgba(155,44,255,.45));
 }
