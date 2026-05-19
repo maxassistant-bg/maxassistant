@@ -56,12 +56,17 @@ border-bottom:1px solid var(--card-border);
 display:flex;
 align-items:center;
 justify-content:space-between;
-padding:20px 0;
+padding:12px 0;
 gap:25px;
 }
 
 .logo img{
-height:52px;
+height:82px;
+width:auto;
+display:block;
+filter:drop-shadow(0 0 22px rgba(155,44,255,.45));
+transition:.25s ease;
+}
 width:auto;
 display:block;
 filter:drop-shadow(0 0 18px rgba(155,44,255,.35));
