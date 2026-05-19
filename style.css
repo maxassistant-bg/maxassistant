@@ -60,14 +60,17 @@ padding:20px 0;
 gap:25px;
 }
 
-.logo{
-font-size:30px;
-font-weight:800;
-text-decoration:none;
-letter-spacing:-.5px;
-background:linear-gradient(135deg,#fff,var(--purple-soft));
--webkit-background-clip:text;
--webkit-text-fill-color:transparent;
+.logo img{
+height:52px;
+width:auto;
+display:block;
+filter:drop-shadow(0 0 18px rgba(155,44,255,.35));
+transition:.25s ease;
+}
+
+.logo img:hover{
+transform:scale(1.03);
+filter:drop-shadow(0 0 28px rgba(155,44,255,.55));
 }
 
 nav ul{
