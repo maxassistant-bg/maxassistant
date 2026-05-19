@@ -351,3 +351,11 @@ font-size:38px;
 }
 
 }
+.hero-logo{
+max-width:780px;
+width:100%;
+height:auto;
+display:block;
+margin:0 auto 35px;
+filter:drop-shadow(0 0 35px rgba(155,44,255,.45));
+}
