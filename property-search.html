@@ -216,10 +216,19 @@ document.getElementById("searchButton").addEventListener("click", function () {
       reasons.push("отговаря на избрания тип имот");
     }
 
-    if (rooms && Number(property.rooms) === rooms) {
-      score += 25;
-      reasons.push("отговаря на избрания брой стаи");
-    }
+    if (rooms) {
+
+  if (Number(property.rooms) !== rooms) {
+    return null;
+  }
+
+  score += 25;
+
+  reasons.push(
+    "отговаря на избрания брой стаи"
+  );
+
+}
 
     if (budget && Number(property.price) <= budget) {
       score += 35;
