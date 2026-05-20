@@ -360,6 +360,15 @@ return {
 
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
 
+      ${item.recommendationReasons && item.recommendationReasons.length ? `
+  <div class="ai-answer">
+    <strong>Защо MaxAssistant препоръчва този комплекс:</strong>
+    <ul>
+      ${item.recommendationReasons.map(reason => `<li>${reason}</li>`).join("")}
+    </ul>
+  </div>
+` : ""}
+
       <p><strong>Силни страни:</strong> ${item.strengths ? item.strengths.join(", ") : "Няма данни"}</p>
 
       <p><strong>Рискове:</strong> ${item.weaknesses ? item.weaknesses.join(", ") : "Няма данни"}</p>
