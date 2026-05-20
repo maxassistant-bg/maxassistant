@@ -16,6 +16,22 @@
 
     "floor": 2,
 
+    "bathrooms": 1,
+
+    "toilets": 1,
+
+    "balconies": 1,
+
+    "storage_room": false,
+
+    "walk_in_closet": false,
+
+    "basement": false,
+
+    "view": "градска среда",
+
+    "furnishing_status": "необзаведен",
+
     "price": 129000,
 
     "price_per_m2": 2031,
@@ -60,6 +76,22 @@
 
     "floor": 4,
 
+    "bathrooms": 2,
+
+    "toilets": 2,
+
+    "balconies": 2,
+
+    "storage_room": false,
+
+    "walk_in_closet": false,
+
+    "basement": false,
+
+    "view": "градска среда",
+
+    "furnishing_status": "необзаведен",
+
     "price": 178000,
 
     "price_per_m2": 1889,
@@ -86,70 +118,124 @@
 
     "source": "NewHomeBulgaria"
   },
+
   {
-  "id": 3,
-  "complex": "City Residence",
-  "building": "A",
-  "location": "Слънчев бряг",
-  "property_type": "студио",
-  "rooms": 1,
-  "area": 42,
-  "floor": 2,
-  "price": 89000,
-  "price_per_m2": 2119,
-  "construction": "тухла",
-  "construction_stage": "в строителство",
-  "completion_status": "до ключ",
-  "act16": false,
-  "beach_line": "3-та линия",
-  "maintenance_fee": 12,
-  "year_round": true,
-  "parking": true,
-  "furnished": false,
-  "investor": "City Residence",
-  "source": "NewHomeBulgaria"
-},
-{
-  "id": 4,
+    "id": 3,
 
-  "complex": "City Residence",
+    "complex": "City Residence",
 
-  "building": "B",
+    "building": "A",
 
-  "location": "Слънчев бряг",
+    "location": "Слънчев бряг",
 
-  "property_type": "една спалня",
+    "property_type": "студио",
 
-  "rooms": 2,
+    "rooms": 1,
 
-  "area": 58.4,
+    "area": 42,
 
-  "floor": 3,
+    "floor": 2,
 
-  "price": 109000,
+    "bathrooms": 1,
 
-  "price_per_m2": 1866,
+    "toilets": 1,
 
-  "construction": "тухла",
+    "balconies": 1,
 
-  "construction_stage": "в строителство",
+    "storage_room": false,
 
-  "completion_status": "до ключ",
+    "walk_in_closet": false,
 
-  "act16": false,
+    "basement": false,
 
-  "beach_line": "3-та линия",
+    "view": "градска среда",
 
-  "maintenance_fee": 12,
+    "furnishing_status": "необзаведен",
 
-  "year_round": true,
+    "price": 89000,
 
-  "parking": true,
+    "price_per_m2": 2119,
 
-  "furnished": false,
+    "construction": "тухла",
 
-  "investor": "City Residence",
+    "construction_stage": "в строителство",
 
-  "source": "NewHomeBulgaria"
-}
+    "completion_status": "до ключ",
+
+    "act16": false,
+
+    "beach_line": "3-та линия",
+
+    "maintenance_fee": 12,
+
+    "year_round": true,
+
+    "parking": true,
+
+    "furnished": false,
+
+    "investor": "City Residence",
+
+    "source": "NewHomeBulgaria"
+  },
+
+  {
+    "id": 4,
+
+    "complex": "City Residence",
+
+    "building": "B",
+
+    "location": "Слънчев бряг",
+
+    "property_type": "една спалня",
+
+    "rooms": 2,
+
+    "area": 58.4,
+
+    "floor": 3,
+
+    "bathrooms": 1,
+
+    "toilets": 1,
+
+    "balconies": 1,
+
+    "storage_room": false,
+
+    "walk_in_closet": false,
+
+    "basement": false,
+
+    "view": "градска среда",
+
+    "furnishing_status": "необзаведен",
+
+    "price": 109000,
+
+    "price_per_m2": 1866,
+
+    "construction": "тухла",
+
+    "construction_stage": "в строителство",
+
+    "completion_status": "до ключ",
+
+    "act16": false,
+
+    "beach_line": "3-та линия",
+
+    "maintenance_fee": 12,
+
+    "year_round": true,
+
+    "parking": true,
+
+    "furnished": false,
+
+    "investor": "City Residence",
+
+    "source": "NewHomeBulgaria"
+  }
 ]
