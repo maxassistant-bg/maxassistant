@@ -248,6 +248,14 @@ return { ...item, score, aiAnswer };
   resultsBox.innerHTML = results.map(item => `
     <div class="card">
       <h3>${item.name}</h3>
+      ${item.aiAnswer && item.aiAnswer.length ? `
+  <div class="ai-answer">
+    <strong>Отговор според зададения въпрос:</strong>
+    <ul>
+      ${item.aiAnswer.map(answer => `<li>${answer}</li>`).join("")}
+    </ul>
+  </div>
+` : ""}
 
       <p><strong>Локация:</strong> ${item.location || "Няма данни"}${item.area ? ", " + item.area : ""}</p>
 
