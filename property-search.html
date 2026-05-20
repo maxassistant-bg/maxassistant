@@ -175,11 +175,19 @@ function arrayIncludesText(array, text) {
 }
 
 function findComplexKnowledge(property) {
-  return complexes.find(item =>
-    normalizeText(item.name).includes(normalizeText(property.complex)) ||
-    normalizeText(property.complex).includes(normalizeText(item.name)) ||
-    normalizeText(item.location) === normalizeText(property.location)
-  );
+
+  return complexes.find(item => {
+
+    const complexName = normalizeText(item.name);
+    const propertyComplex = normalizeText(property.complex);
+
+    return (
+      complexName.includes(propertyComplex) ||
+      propertyComplex.includes(complexName)
+    );
+
+  });
+
 }
 
 /* Основно търсене */
