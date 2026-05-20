@@ -394,6 +394,21 @@ function renderResults(results) {
       <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
       <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
       <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
+      <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
+
+<p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
+
+<p><strong>Балкони:</strong> ${item.balconies || "Няма данни"}</p>
+
+<p><strong>Склад:</strong> ${item.storage_room ? "Да" : "Не"}</p>
+
+<p><strong>Гардеробна:</strong> ${item.walk_in_closet ? "Да" : "Не"}</p>
+
+<p><strong>Мазе:</strong> ${item.basement ? "Да" : "Не"}</p>
+
+<p><strong>Гледка:</strong> ${item.view || "Няма данни"}</p>
+
+<p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
       <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
       <p><strong>Цена:</strong> ${item.price ? Number(item.price).toLocaleString() + " €" : "Няма данни"}</p>
       <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
