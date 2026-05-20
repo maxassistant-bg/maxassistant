@@ -214,10 +214,21 @@ document.getElementById("searchButton").addEventListener("click", function () {
     const allText = propertyText + " " + complexText;
 
     /* Основни филтри */
-    if (location && normalizeText(property.location).includes(location)) {
-      score += 35;
-      reasons.push("съвпада с избраната локация");
-    }
+   if (location) {
+
+  if (
+    !normalizeText(property.location).includes(location)
+  ) {
+    return null;
+  }
+
+  score += 35;
+
+  reasons.push(
+    "съвпада с избраната локация"
+  );
+
+}
 
    if (propertyType) {
 
