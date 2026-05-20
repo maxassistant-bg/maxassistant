@@ -700,3 +700,15 @@ padding-left:20px;
 margin-bottom:8px;
 color:var(--muted);
 }
+.new-search-button{
+margin:20px 0;
+border:0;
+cursor:pointer;
+width:auto;
+}
+
+@media(max-width:520px){
+.new-search-button{
+width:100%;
+}
+}
