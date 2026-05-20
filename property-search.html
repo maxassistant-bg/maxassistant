@@ -201,6 +201,21 @@ words.forEach(word => {
 
   if (item.tags) {
 
+    if (item.environment_profile) {
+
+  item.environment_profile.forEach(profile => {
+
+    if (
+      profile.toLowerCase().includes(word) ||
+      word.includes(profile.toLowerCase())
+    ) {
+      score += 18;
+    }
+
+  });
+
+}
+
     item.tags.forEach(tag => {
 
       if (
