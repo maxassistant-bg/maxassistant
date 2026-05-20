@@ -1,0 +1,55 @@
+[
+  {
+    "id": "green-life-sozopol",
+    "name": "Green Life Beach Resort Sozopol",
+    "location": "Созопол",
+    "area": "Каваци",
+
+    "year_round": false,
+
+    "good_for": [
+      "почивка",
+      "инвестиция",
+      "отдаване под наем"
+    ],
+
+    "not_good_for": [
+      "целогодишно живеене"
+    ],
+
+    "beach_distance": "много близо",
+
+    "maintenance_fee_level": "висока",
+
+    "noise_level": "средно",
+
+    "rental_potential": "висок",
+
+    "installment_plan": false,
+
+    "strengths": [
+      "голяма озеленена територия",
+      "близо до плаж Каваци",
+      "силен летен наем",
+      "добра ликвидност"
+    ],
+
+    "weaknesses": [
+      "не е най-добрият избор за целогодишно живеене",
+      "висока такса поддръжка",
+      "някои части са шумни през сезона"
+    ],
+
+    "zones": [
+      {
+        "name": "Park Side",
+        "description": "По-спокойна зона."
+      },
+
+      {
+        "name": "First Line",
+        "description": "По-престижна зона близо до морето."
+      }
+    ]
+  }
+]
