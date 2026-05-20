@@ -226,9 +226,9 @@ document.getElementById("searchButton").addEventListener("click", function () {
       reasons.push("влиза в зададения бюджет");
     }
 
-    if (budget && Number(property.price) > budget) {
-      score -= 25;
-    }
+  if (budget && Number(property.price) > budget) {
+  return null;
+}
 
     if (minArea && Number(property.area) >= minArea) {
       score += 20;
