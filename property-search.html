@@ -366,6 +366,13 @@ document.getElementById("searchButton").addEventListener("click", function () {
 });
 
   renderResults(results);
+
+setTimeout(() => {
+  document.getElementById("results").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}, 100);
 });
 
 /* Показване */
