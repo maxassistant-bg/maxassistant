@@ -313,7 +313,7 @@ document.getElementById("searchButton").addEventListener("click", function () {
       complexInfo
     };
   })
-  .filter(item => item.score > 0)
+  .filter(item => item && item.score > 0)
   .sort((a, b) => b.score - a.score);
 
   renderResults(results);
