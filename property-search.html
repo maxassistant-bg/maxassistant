@@ -478,10 +478,24 @@ function renderResults(results) {
 }
 
 function scrollToSearch() {
-  document.querySelector(".card").scrollIntoView({
+
+  const searchBox = document.querySelector(".search-grid");
+
+  searchBox.scrollIntoView({
     behavior: "smooth",
     block: "start"
   });
+
+  setTimeout(() => {
+
+    const firstField = document.getElementById("location");
+
+    if (firstField) {
+      firstField.focus();
+    }
+
+  }, 500);
+
 }
 </script>
 
