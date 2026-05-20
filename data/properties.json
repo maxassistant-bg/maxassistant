@@ -296,5 +296,184 @@
   "investor": "Cascadas",
 
   "source": "NewHomeBulgaria"
+},
+{
+  "id": 6,
+
+  "complex": "Green Life Beach Resort Sozopol",
+
+  "building": "Park Side",
+
+  "location": "Созопол",
+
+  "property_type": "студио",
+
+  "rooms": 1,
+
+  "area": 37,
+
+  "floor": 4,
+
+  "bathrooms": 1,
+
+  "toilets": 1,
+
+  "balconies": 0,
+
+  "storage_room": false,
+
+  "walk_in_closet": false,
+
+  "basement": false,
+
+  "view": "зеленина",
+
+  "furnishing_status": "напълно обзаведен",
+
+  "price": 74900,
+
+  "price_per_m2": 2024,
+
+  "construction": "тухла",
+
+  "construction_stage": "завършено строителство",
+
+  "completion_status": "обзаведен",
+
+  "act16": true,
+
+  "beach_line": "1-ва линия",
+
+  "maintenance_fee": 1000,
+
+  "year_round": false,
+
+  "parking": false,
+
+  "furnished": true,
+
+  "investor": "Green Life",
+
+  "source": "NewHomeBulgaria"
+},
+
+{
+  "id": 7,
+
+  "complex": "Green Life Beach Resort Sozopol",
+
+  "building": "First Line",
+
+  "location": "Созопол",
+
+  "property_type": "една спалня",
+
+  "rooms": 2,
+
+  "area": 63,
+
+  "floor": 2,
+
+  "bathrooms": 1,
+
+  "toilets": 1,
+
+  "balconies": 1,
+
+  "storage_room": false,
+
+  "walk_in_closet": false,
+
+  "basement": false,
+
+  "view": "море",
+
+  "furnishing_status": "напълно обзаведен",
+
+  "price": 139000,
+
+  "price_per_m2": 2206,
+
+  "construction": "тухла",
+
+  "construction_stage": "завършено строителство",
+
+  "completion_status": "обзаведен",
+
+  "act16": true,
+
+  "beach_line": "1-ва линия",
+
+  "maintenance_fee": 1397,
+
+  "year_round": false,
+
+  "parking": false,
+
+  "furnished": true,
+
+  "investor": "Green Life",
+
+  "source": "NewHomeBulgaria"
+},
+
+{
+  "id": 8,
+
+  "complex": "Green Life Beach Resort Sozopol",
+
+  "building": "Park Side",
+
+  "location": "Созопол",
+
+  "property_type": "две спални",
+
+  "rooms": 3,
+
+  "area": 92,
+
+  "floor": 3,
+
+  "bathrooms": 2,
+
+  "toilets": 2,
+
+  "balconies": 2,
+
+  "storage_room": false,
+
+  "walk_in_closet": false,
+
+  "basement": false,
+
+  "view": "басейн и зеленина",
+
+  "furnishing_status": "обзаведен",
+
+  "price": 189000,
+
+  "price_per_m2": 2054,
+
+  "construction": "тухла",
+
+  "construction_stage": "завършено строителство",
+
+  "completion_status": "обзаведен",
+
+  "act16": true,
+
+  "beach_line": "1-ва линия",
+
+  "maintenance_fee": 1397,
+
+  "year_round": false,
+
+  "parking": false,
+
+  "furnished": true,
+
+  "investor": "Green Life",
+
+  "source": "NewHomeBulgaria"
 }
 ]
