@@ -319,10 +319,50 @@ if (item.beach_distance === "много близо") {
 if (item.tags) {
 
   if (item.tags.includes("семеен")) {
+  recommendationReasons.push(
+    "подходящ е за семейна почивка"
+  );
+}
+
+/* ТУК ДОБАВЯШ НОВОТО */
+
+if (
+  freeText.includes("зеленина") ||
+  freeText.includes("природа") ||
+  freeText.includes("спокойствие")
+) {
+
+  if (
+    item.environment_profile &&
+    item.environment_profile.includes("зеленина")
+  ) {
+
     recommendationReasons.push(
-      "подходящ е за семейна почивка"
+      "комплексът предлага повече зеленина и resort атмосфера"
     );
+
   }
+
+}
+
+if (
+  freeText.includes("инфраструктура") ||
+  freeText.includes("град") ||
+  freeText.includes("активност")
+) {
+
+  if (
+    item.environment_profile &&
+    item.environment_profile.includes("градска среда")
+  ) {
+
+    recommendationReasons.push(
+      "комплексът предлага по-градска среда и повече инфраструктура"
+    );
+
+  }
+
+}
 
   if (item.tags.includes("силен летен наем")) {
     recommendationReasons.push(
