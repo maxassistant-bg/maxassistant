@@ -1,11 +1,30 @@
 [
   {
     "id": "green-life-sozopol",
+
     "name": "Green Life Beach Resort Sozopol",
+
     "location": "Созопол",
+
     "area": "Каваци",
 
     "year_round": false,
+
+    "act16_status": "частично",
+
+    "act16_note": "Повечето части на комплекса имат Акт 16. Някои нови сгради и ново строителство все още са в процес.",
+
+    "installment_plan": false,
+
+    "installment_note": "При препродажби обикновено няма стандартно разсрочване от инвеститор.",
+
+    "finish_stage": "обзаведени и готови за ползване апартаменти",
+
+    "parking": "зависи от конкретната зона и условията",
+
+    "completion_status": "завършен комплекс",
+
+    "developer_payment_years": 0,
 
     "good_for": [
       "почивка",
@@ -24,8 +43,6 @@
     "noise_level": "средно",
 
     "rental_potential": "висок",
-
-    "installment_plan": false,
 
     "strengths": [
       "голяма озеленена територия",
@@ -53,6 +70,3 @@
     ]
   }
 ]
-"act16_status": "частично",
-
-"act16_note": "Повечето части на комплекса имат Акт 16. Някои нови сгради и ново строителство все още са в процес."
