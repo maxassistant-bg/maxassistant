@@ -211,10 +211,19 @@ document.getElementById("searchButton").addEventListener("click", function () {
       reasons.push("съвпада с избраната локация");
     }
 
-    if (propertyType && normalizeText(property.property_type).includes(propertyType)) {
-      score += 30;
-      reasons.push("отговаря на избрания тип имот");
-    }
+   if (propertyType) {
+
+  if (!normalizeText(property.property_type).includes(propertyType)) {
+    return null;
+  }
+
+  score += 30;
+
+  reasons.push(
+    "отговаря на избрания тип имот"
+  );
+
+}
 
     if (rooms) {
 
