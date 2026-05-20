@@ -36,9 +36,8 @@
     <h1 class="section-title">AI търсачка за имоти по морето</h1>
 
     <p class="section-text">
-      Изберете критерии или задайте въпрос със свободен текст. MaxAssistant сравнява
-      търсенето с база знания за комплекси, райони, Акт 16, разсрочване,
-      такси, среда и начин на издаване.
+      Търсене в конкретни апартаменти, ценови листи и AI база знания за комплекси.
+      Първо се показват реалните имоти, а след това MaxAssistant добавя контекст за комплекса.
     </p>
 
     <div class="card">
@@ -53,30 +52,38 @@
           <option value="Черноморец">Черноморец</option>
         </select>
 
-        <select id="purpose">
-          <option value="">Цел</option>
-          <option value="почивка">Почивка</option>
-          <option value="инвестиция">Инвестиция</option>
-          <option value="отдаване под наем">Отдаване под наем</option>
-          <option value="целогодишно живеене">Целогодишно живеене</option>
+        <select id="propertyType">
+          <option value="">Тип имот</option>
+          <option value="студио">Студио</option>
+          <option value="една спалня">Една спалня</option>
+          <option value="две спални">Две спални</option>
+          <option value="къща">Къща / вила</option>
         </select>
 
-        <select id="act16">
-          <option value="">Акт 16</option>
-          <option value="да">Има Акт 16</option>
-          <option value="частично">Частично / зависи от сградата</option>
-          <option value="не">Няма Акт 16</option>
+        <select id="rooms">
+          <option value="">Брой стаи</option>
+          <option value="1">1 стая</option>
+          <option value="2">2 стаи</option>
+          <option value="3">3 стаи</option>
+          <option value="4">4+ стаи</option>
         </select>
 
-        <select id="installment">
-          <option value="">Разсрочване</option>
-          <option value="да">Има разсрочване</option>
-          <option value="не">Няма стандартно разсрочване</option>
+        <input type="number" id="budget" placeholder="Бюджет до €">
+
+        <input type="number" id="minArea" placeholder="Минимална площ кв.м">
+
+        <select id="constructionStage">
+          <option value="">Етап на строителство</option>
+          <option value="в строителство">В строителство</option>
+          <option value="завършено">Завършено</option>
+          <option value="завършено с разрешение за ползване">С разрешение за ползване</option>
         </select>
 
-        <select id="beach">
-          <option value="">Близост до плаж</option>
-          <option value="много близо">Много близо до плаж</option>
+        <select id="beachLine">
+          <option value="">Линия до море / плаж</option>
+          <option value="1-ва линия">1-ва линия</option>
+          <option value="2-ра линия">2-ра линия</option>
+          <option value="3-та линия">3-та линия</option>
         </select>
 
         <select id="maintenance">
@@ -86,12 +93,12 @@
           <option value="висока">Висока</option>
         </select>
 
-        <textarea id="freeText" placeholder="Например: искам зеленина и плаж, има ли Акт 16, има ли разсрочване, как се издават апартаментите, подходящ ли е за целогодишно живеене..."></textarea>
+        <textarea id="freeText" placeholder="Свободен въпрос: има ли Акт 16, разсрочване, как се издава, подходящ ли е за наеми, искам зеленина, плаж, инфраструктура..."></textarea>
 
       </div>
 
       <button class="button search-button" id="searchButton">
-        Покажи подходящи комплекси
+        Търси имоти
       </button>
     </div>
 
@@ -138,18 +145,22 @@
 
 <script>
 let complexes = [];
+let properties = [];
 
-/* 1. Зареждане на knowledge base */
-fetch("data/complexes.json")
-  .then(response => response.json())
-  .then(data => {
-    complexes = data;
-  })
-  .catch(error => {
-    console.error("Грешка при зареждане на базата:", error);
-  });
+/* Зареждане на базите */
+Promise.all([
+  fetch("data/complexes.json").then(response => response.json()),
+  fetch("data/properties.json").then(response => response.json())
+])
+.then(([complexData, propertyData]) => {
+  complexes = complexData;
+  properties = propertyData;
+})
+.catch(error => {
+  console.error("Грешка при зареждане на базите:", error);
+});
 
-/* 2. Помощни функции */
+/* Помощни функции */
 function normalizeText(text) {
   return (text || "").toString().toLowerCase().trim();
 }
@@ -163,188 +174,143 @@ function arrayIncludesText(array, text) {
   return array.join(" ").toLowerCase().includes(text);
 }
 
-/* 3. Основна AI логика */
+function findComplexKnowledge(property) {
+  return complexes.find(item =>
+    normalizeText(item.name).includes(normalizeText(property.complex)) ||
+    normalizeText(property.complex).includes(normalizeText(item.name)) ||
+    normalizeText(item.location) === normalizeText(property.location)
+  );
+}
+
+/* Основно търсене */
 document.getElementById("searchButton").addEventListener("click", function () {
   const location = normalizeText(document.getElementById("location").value);
-  const purpose = normalizeText(document.getElementById("purpose").value);
-  const act16 = normalizeText(document.getElementById("act16").value);
-  const installment = normalizeText(document.getElementById("installment").value);
-  const beach = normalizeText(document.getElementById("beach").value);
+  const propertyType = normalizeText(document.getElementById("propertyType").value);
+  const rooms = Number(document.getElementById("rooms").value || 0);
+  const budget = Number(document.getElementById("budget").value || 0);
+  const minArea = Number(document.getElementById("minArea").value || 0);
+  const constructionStage = normalizeText(document.getElementById("constructionStage").value);
+  const beachLine = normalizeText(document.getElementById("beachLine").value);
   const maintenance = normalizeText(document.getElementById("maintenance").value);
   const freeText = normalizeText(document.getElementById("freeText").value);
-
   const freeWords = freeText.split(/\s+/).filter(word => word.length > 2);
 
-  const results = complexes.map(item => {
+  const results = properties.map(property => {
     let score = 0;
+    let reasons = [];
     let aiAnswer = [];
-    let recommendationReasons = [];
 
-    const allText = normalizeText(JSON.stringify(item));
+    const complexInfo = findComplexKnowledge(property);
+    const propertyText = normalizeText(JSON.stringify(property));
+    const complexText = normalizeText(JSON.stringify(complexInfo || {}));
+    const allText = propertyText + " " + complexText;
 
-    /* 4. Структурирани филтри */
-    if (location && normalizeText(item.location).includes(location)) {
-      score += 30;
+    /* Основни филтри */
+    if (location && normalizeText(property.location).includes(location)) {
+      score += 35;
+      reasons.push("съвпада с избраната локация");
     }
 
-    if (purpose && arrayIncludesText(item.good_for, purpose)) {
+    if (propertyType && normalizeText(property.property_type).includes(propertyType)) {
       score += 30;
+      reasons.push("отговаря на избрания тип имот");
     }
 
-    if (purpose && arrayIncludesText(item.not_good_for, purpose)) {
+    if (rooms && Number(property.rooms) === rooms) {
+      score += 25;
+      reasons.push("отговаря на избрания брой стаи");
+    }
+
+    if (budget && Number(property.price) <= budget) {
+      score += 35;
+      reasons.push("влиза в зададения бюджет");
+    }
+
+    if (budget && Number(property.price) > budget) {
       score -= 25;
     }
 
-    if (act16 && normalizeText(item.act16_status).includes(act16)) {
-      score += 25;
-    }
-
-    if (installment === "да" && item.installment_plan === true) {
-      score += 25;
-    }
-
-    if (installment === "не" && item.installment_plan === false) {
+    if (minArea && Number(property.area) >= minArea) {
       score += 20;
+      reasons.push("отговаря на минималната площ");
     }
 
-    if (beach && normalizeText(item.beach_distance).includes(beach)) {
+    if (constructionStage && normalizeText(property.construction_stage).includes(constructionStage)) {
       score += 15;
+      reasons.push("съвпада с етапа на строителство");
     }
 
-    if (maintenance && normalizeText(item.maintenance_fee_level).includes(maintenance)) {
+    if (beachLine && normalizeText(property.beach_line).includes(beachLine)) {
+      score += 15;
+      reasons.push("отговаря на избраната линия до плаж");
+    }
+
+    if (maintenance && normalizeText(String(property.maintenance_fee_level || property.maintenance_fee)).includes(maintenance)) {
       score += 10;
+      reasons.push("отговаря на търсената такса поддръжка");
     }
 
-    /* 5. Свободен текст - конкретни въпроси */
-    if (includesAny(freeText, ["акт 16", "акт16"])) {
-      if (item.act16_status || item.act16_note) {
-        score += 18;
-        aiAnswer.push(
-          "По въпроса за Акт 16: " +
-          (item.act16_note || item.act16_status || "няма въведена информация.")
-        );
+    /* Свободни въпроси */
+    if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
+      if (property.act16 === true) {
+        score += 20;
+        aiAnswer.push("За този имот е отбелязано, че има Акт 16 / разрешение за ползване.");
+      } else if (complexInfo && complexInfo.act16_note) {
+        score += 10;
+        aiAnswer.push("За комплекса: " + complexInfo.act16_note);
+      } else {
+        aiAnswer.push("Няма достатъчно въведена информация за Акт 16 при този имот.");
       }
     }
 
-    if (includesAny(freeText, ["разсроч", "плащане", "вноски"])) {
-      if (item.installment_note || typeof item.installment_plan !== "undefined") {
-        score += 18;
-        aiAnswer.push(
-          "По въпроса за разсрочване: " +
-          (item.installment_note || (item.installment_plan ? "има разсрочване." : "няма стандартна схема."))
-        );
-      }
-    }
-
-    if (includesAny(freeText, ["издава", "издаване", "до ключ", "обзавеждан", "мебел", "готов"])) {
-      if (item.finish_stage) {
-        score += 18;
-        aiAnswer.push(
-          "По въпроса за издаване/обзавеждане: " +
-          item.finish_stage +
-          ". При конкретни имоти състоянието винаги се проверява отделно."
-        );
-      }
-    }
-
-    if (includesAny(freeText, ["паркинг", "паркиране"])) {
-      if (item.parking) {
+    if (includesAny(freeText, ["разсроч", "вноски", "плащане"])) {
+      if (complexInfo && complexInfo.installment_note) {
         score += 12;
-        aiAnswer.push(
-          "По въпроса за паркиране: " + item.parking + "."
-        );
+        aiAnswer.push("По въпроса за разсрочване: " + complexInfo.installment_note);
       }
     }
 
-    if (includesAny(freeText, ["целогодиш", "постоянно живеене", "зимата"])) {
+    if (includesAny(freeText, ["обзавед", "мебел", "готов", "до ключ", "издава"])) {
       score += 10;
       aiAnswer.push(
-        item.year_round
-          ? "Комплексът може да се разглежда за целогодишно или по-дълго ползване."
-          : "Комплексът не е най-подходящ избор за целогодишно живеене."
+        "Издаване / обзавеждане: " +
+        (property.completion_status || property.finish_stage || (complexInfo && complexInfo.finish_stage) || "проверява се според конкретния имот.")
       );
     }
 
-    /* 6. Lifestyle / среда */
-    if (includesAny(freeText, ["зеленина", "природа", "спокойствие", "тихо", "тишина"])) {
-      if (arrayIncludesText(item.environment_profile, "зеленина") || arrayIncludesText(item.tags, "озеленен")) {
-        score += 25;
-        recommendationReasons.push(
-          "комплексът предлага повече зеленина и resort атмосфера"
-        );
+    if (includesAny(freeText, ["зеленина", "природа", "спокойствие", "тишина"])) {
+      if (complexInfo && (arrayIncludesText(complexInfo.environment_profile, "зеленина") || arrayIncludesText(complexInfo.tags, "озеленен"))) {
+        score += 20;
+        reasons.push("комплексът има повече зеленина и resort атмосфера");
       }
     }
 
-    if (includesAny(freeText, ["инфраструктура", "град", "активност", "център", "удобства"])) {
-      if (arrayIncludesText(item.environment_profile, "градска среда") || arrayIncludesText(item.tags, "инфраструктура")) {
-        score += 25;
-        recommendationReasons.push(
-          "комплексът предлага по-градска среда и повече инфраструктура"
-        );
+    if (includesAny(freeText, ["инфраструктура", "град", "активност", "център"])) {
+      if (complexInfo && (arrayIncludesText(complexInfo.environment_profile, "градска среда") || arrayIncludesText(complexInfo.tags, "инфраструктура"))) {
+        score += 20;
+        reasons.push("комплексът предлага по-градска среда и инфраструктура");
       }
     }
 
-    /* 7. Semantic matching по думи, tags и environment_profile */
+    if (includesAny(freeText, ["наем", "отдаване", "инвестиция"])) {
+      if (complexInfo && normalizeText(complexInfo.rental_potential).includes("висок")) {
+        score += 18;
+        reasons.push("комплексът има добър потенциал за отдаване под наем");
+      }
+    }
+
     freeWords.forEach(word => {
       if (allText.includes(word)) {
-        score += 5;
-      }
-
-      if (item.tags) {
-        item.tags.forEach(tag => {
-          const tagText = normalizeText(tag);
-          if (tagText.includes(word) || word.includes(tagText)) {
-            score += 15;
-          }
-        });
-      }
-
-      if (item.environment_profile) {
-        item.environment_profile.forEach(profile => {
-          const profileText = normalizeText(profile);
-          if (profileText.includes(word) || word.includes(profileText)) {
-            score += 18;
-          }
-        });
+        score += 4;
       }
     });
 
-    /* 8. Причини за препоръка */
-    if (purpose === "почивка") {
-      recommendationReasons.push("подходящ е за сезонно ползване и почивка");
-    }
-
-    if (purpose === "инвестиция") {
-      recommendationReasons.push("има инвестиционен потенциал според въведените данни");
-    }
-
-    if (purpose === "отдаване под наем") {
-      recommendationReasons.push("има потенциал за летни наеми");
-    }
-
-    if (purpose === "целогодишно живеене" && item.year_round === false) {
-      recommendationReasons.push(
-        "системата предупреждава, че комплексът не е идеален за постоянно живеене"
-      );
-    }
-
-    if (normalizeText(item.beach_distance) === "много близо") {
-      recommendationReasons.push("намира се близо до плажа");
-    }
-
-    if (arrayIncludesText(item.tags, "семеен")) {
-      recommendationReasons.push("подходящ е за семейна почивка");
-    }
-
-    if (arrayIncludesText(item.tags, "силен летен наем")) {
-      recommendationReasons.push("има силен потенциал за летни наеми");
-    }
-
     return {
-      ...item,
+      ...property,
       score,
+      reasons,
       aiAnswer,
-      recommendationReasons
+      complexInfo
     };
   })
   .filter(item => item.score > 0)
@@ -353,7 +319,7 @@ document.getElementById("searchButton").addEventListener("click", function () {
   renderResults(results);
 });
 
-/* 9. Показване на резултатите */
+/* Показване */
 function renderResults(results) {
   const resultsBox = document.getElementById("results");
 
@@ -362,7 +328,7 @@ function renderResults(results) {
       <div class="card">
         <h3>Няма точен резултат</h3>
         <p>
-          Това не означава, че няма подходящ имот. Базата знания тепърва ще се разширява.
+          Това не означава, че няма подходящ имот. Базата с апартаменти и ценови листи тепърва ще се разширява.
         </p>
       </div>
     `;
@@ -371,7 +337,7 @@ function renderResults(results) {
 
   resultsBox.innerHTML = results.map(item => `
     <div class="card">
-      <h3>${item.name}</h3>
+      <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
 
       ${item.aiAnswer && item.aiAnswer.length ? `
         <div class="ai-answer">
@@ -382,46 +348,37 @@ function renderResults(results) {
         </div>
       ` : ""}
 
-      <p><strong>Локация:</strong> ${item.location || "Няма данни"}${item.area ? ", " + item.area : ""}</p>
-
-      <p><strong>Тип:</strong> ${item.type || "Няма данни"}</p>
-
-      <p><strong>Подходящ за:</strong> ${item.good_for ? item.good_for.join(", ") : "Няма данни"}</p>
-
-      <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for ? item.not_good_for.join(", ") : "Няма данни"}</p>
-
-      <p><strong>Акт 16:</strong> ${item.act16_status || "Няма въведена информация"}</p>
-
-      <p><strong>Уточнение за Акт 16:</strong> ${item.act16_note || "Няма въведена информация"}</p>
-
-      <p><strong>Разсрочване:</strong> ${item.installment_plan ? "Да" : "Не / няма стандартна схема"}</p>
-
-      <p><strong>Условия за разсрочване:</strong> ${item.installment_note || "Няма въведена информация"}</p>
-
-      <p><strong>Издаване:</strong> ${item.finish_stage || "Няма въведена информация"}</p>
-
-      <p><strong>Паркиране:</strong> ${item.parking || "Проверява се според конкретния имот"}</p>
-
-      <p><strong>Статус:</strong> ${item.completion_status || "Няма въведена информация"}</p>
-
-      <p><strong>Близост до плаж:</strong> ${item.beach_distance || "Няма данни"}</p>
-
-      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level || "Няма данни"}</p>
-
+      <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
+      <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
+      <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
+      <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
+      <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
+      <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
+      <p><strong>Цена:</strong> ${item.price ? Number(item.price).toLocaleString() + " €" : "Няма данни"}</p>
+      <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
+      <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
+      <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
+      <p><strong>Линия до плаж:</strong> ${item.beach_line || "Няма данни"}</p>
+      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
+      <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
 
-      ${item.recommendationReasons && item.recommendationReasons.length ? `
+      ${item.reasons && item.reasons.length ? `
         <div class="ai-answer">
-          <strong>Защо MaxAssistant препоръчва този комплекс:</strong>
+          <strong>Защо MaxAssistant показва този имот:</strong>
           <ul>
-            ${item.recommendationReasons.map(reason => `<li>${reason}</li>`).join("")}
+            ${item.reasons.map(reason => `<li>${reason}</li>`).join("")}
           </ul>
         </div>
       ` : ""}
 
-      <p><strong>Силни страни:</strong> ${item.strengths ? item.strengths.join(", ") : "Няма данни"}</p>
-
-      <p><strong>Рискове:</strong> ${item.weaknesses ? item.weaknesses.join(", ") : "Няма данни"}</p>
+      ${item.complexInfo ? `
+        <div class="ai-answer">
+          <strong>AI контекст за комплекса:</strong>
+          <p>${item.complexInfo.name} – ${item.complexInfo.location}${item.complexInfo.area ? ", " + item.complexInfo.area : ""}</p>
+          <p>${item.complexInfo.strengths ? item.complexInfo.strengths.join(", ") : ""}</p>
+        </div>
+      ` : ""}
     </div>
   `).join("");
 }
