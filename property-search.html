@@ -379,17 +379,13 @@ document.getElementById("searchButton").addEventListener("click", function () {
   renderResults(results);
 
 setTimeout(() => {
-  const resultsBox = document.getElementById("results");
-  const firstResult = resultsBox.querySelector(".card");
+  const firstResult = document.querySelector("#results .card");
 
   if (!firstResult) return;
 
-  const headerOffset = 55;
-  const top = firstResult.getBoundingClientRect().top + window.pageYOffset - headerOffset;
-
-  window.scrollTo({
-    top: top,
-    behavior: "smooth"
+  firstResult.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
   });
 }, 150);
 
