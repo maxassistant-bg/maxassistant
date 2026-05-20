@@ -332,7 +332,30 @@ document.getElementById("searchButton").addEventListener("click", function () {
     };
   })
   .filter(item => item && item.score > 0)
-  .sort((a, b) => b.score - a.score);
+  .sort((a, b) => {
+
+  if (b.score !== a.score) {
+    return b.score - a.score;
+  }
+
+  const budget = Number(
+    document.getElementById("budget").value || 0
+  );
+
+  if (budget) {
+
+    const diffA = Math.abs(budget - a.price);
+    const diffB = Math.abs(budget - b.price);
+
+    if (diffA !== diffB) {
+      return diffA - diffB;
+    }
+
+  }
+
+  return b.area - a.area;
+
+});
 
   renderResults(results);
 });
