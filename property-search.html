@@ -247,7 +247,63 @@ if (freeText.includes("целогодиш")) {
   );
 }
 
-return { ...item, score, aiAnswer };
+let recommendationReasons = [];
+
+if (purpose === "почивка") {
+  recommendationReasons.push(
+    "подходящ е за сезонно ползване и почивка"
+  );
+}
+
+if (purpose === "инвестиция") {
+  recommendationReasons.push(
+    "има добър инвестиционен потенциал"
+  );
+}
+
+if (purpose === "отдаване под наем") {
+  recommendationReasons.push(
+    "има потенциал за летни наеми"
+  );
+}
+
+if (
+  purpose === "целогодишно живеене" &&
+  item.year_round === false
+) {
+  recommendationReasons.push(
+    "системата предупреждава, че комплексът не е идеален за постоянно живеене"
+  );
+}
+
+if (item.beach_distance === "много близо") {
+  recommendationReasons.push(
+    "намира се близо до плажа"
+  );
+}
+
+if (item.tags) {
+
+  if (item.tags.includes("семеен")) {
+    recommendationReasons.push(
+      "подходящ е за семейна почивка"
+    );
+  }
+
+  if (item.tags.includes("силен летен наем")) {
+    recommendationReasons.push(
+      "има силен потенциал за летни наеми"
+    );
+  }
+
+}
+
+return {
+  ...item,
+  score,
+  aiAnswer,
+  recommendationReasons
+};
   })
   .filter(item => item.score > 0)
   .sort((a, b) => b.score - a.score);
