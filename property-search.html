@@ -195,7 +195,38 @@ document.getElementById("searchButton").addEventListener("click", function () {
       if (word.length > 2 && allText.includes(word)) score += 5;
     });
 
-    return { ...item, score };
+   let aiAnswer = [];
+
+if (freeText.includes("акт 16") || freeText.includes("акт16")) {
+  aiAnswer.push("По въпроса за Акт 16: " + (item.act16_note || "няма въведена информация."));
+}
+
+if (freeText.includes("разсроч")) {
+  aiAnswer.push("По въпроса за разсрочване: " + (item.installment_note || "няма въведена информация."));
+}
+
+if (
+  freeText.includes("обзавеждан") ||
+  freeText.includes("мебел") ||
+  freeText.includes("готов") ||
+  freeText.includes("издава")
+) {
+  aiAnswer.push("По въпроса за издаване/обзавеждане: " + (item.finish_stage || "няма въведена информация."));
+}
+
+if (freeText.includes("паркинг") || freeText.includes("паркиране")) {
+  aiAnswer.push("По въпроса за паркиране: " + (item.parking || "проверява се според конкретния имот."));
+}
+
+if (freeText.includes("целогодиш")) {
+  aiAnswer.push(
+    item.year_round
+      ? "Комплексът може да се разглежда за целогодишно ползване."
+      : "Комплексът не е най-подходящ избор за целогодишно живеене."
+  );
+}
+
+return { ...item, score, aiAnswer };
   })
   .filter(item => item.score > 0)
   .sort((a, b) => b.score - a.score);
