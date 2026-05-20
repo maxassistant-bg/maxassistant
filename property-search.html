@@ -403,6 +403,14 @@ function renderResults(results) {
       <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
       <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
+      ${item.complexInfo && item.complexInfo.infrastructure ? `
+  <div class="ai-answer">
+    <strong>Инфраструктура в комплекса:</strong>
+    <ul>
+      ${item.complexInfo.infrastructure.map(infra => `<li>${infra}</li>`).join("")}
+    </ul>
+  </div>
+` : ""}
 
       ${item.reasons && item.reasons.length ? `
         <div class="ai-answer">
