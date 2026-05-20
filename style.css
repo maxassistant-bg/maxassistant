@@ -711,4 +711,13 @@ width:auto;
 .new-search-button{
 width:100%;
 }
+.results{
+display:grid;
+gap:34px;
+margin-top:46px;
+scroll-margin-top:180px;
+}
+
+.results .card{
+margin-bottom:0;
 }
