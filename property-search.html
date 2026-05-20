@@ -1,1 +1,199 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>AI търсачка - MaxAssistant</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <div class="container navbar">
+    <a href="index.html" class="logo">MaxAssistant</a>
+
+    <nav>
+      <ul>
+        <li><a href="index.html">Начало</a></li>
+        <li><a href="property-search.html">AI търсачка</a></li>
+        <li><a href="complexes.html">Комплекси</a></li>
+        <li><a href="investors.html">Инвеститори</a></li>
+        <li><a href="price-lists.html">Ценови листи</a></li>
+        <li><a href="areas.html">Райони</a></li>
+        <li><a href="ai-consultant.html">AI консултант</a></li>
+        <li><a href="contact.html">Контакти</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+
+    <h1 class="section-title">AI търсачка за имоти по морето</h1>
+
+    <p class="section-text">
+      Опишете какъв имот търсите. MaxAssistant ще сравни вашите критерии
+      с наличната база знания за комплекси, райони и инвестиционен потенциал.
+    </p>
+
+    <div class="card">
+      <div class="search-grid">
+
+        <select id="location">
+          <option value="">Локация</option>
+          <option value="Созопол">Созопол</option>
+          <option value="Слънчев бряг">Слънчев бряг</option>
+          <option value="Свети Влас">Свети Влас</option>
+          <option value="Бургас">Бургас</option>
+          <option value="Черноморец">Черноморец</option>
+        </select>
+
+        <select id="purpose">
+          <option value="">Цел</option>
+          <option value="почивка">Почивка</option>
+          <option value="инвестиция">Инвестиция</option>
+          <option value="отдаване под наем">Отдаване под наем</option>
+          <option value="целогодишно живеене">Целогодишно живеене</option>
+        </select>
+
+        <select id="beach">
+          <option value="">Близост до плаж</option>
+          <option value="много близо">Много близо до плаж</option>
+        </select>
+
+        <select id="maintenance">
+          <option value="">Такса поддръжка</option>
+          <option value="ниска">Ниска</option>
+          <option value="средна">Средна</option>
+          <option value="висока">Висока</option>
+        </select>
+
+        <textarea id="freeText" placeholder="Допълнително: тишина, разсрочване, Акт 16, гледка море, ниска такса..."></textarea>
+
+      </div>
+
+      <button class="button search-button" id="searchButton">
+        Покажи подходящи комплекси
+      </button>
+    </div>
+
+    <div id="results" class="results"></div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+
+      <div>
+        <h3>AI Система</h3>
+        <ul>
+          <li><a href="property-search.html">AI търсачка</a></li>
+          <li><a href="ai-consultant.html">AI консултант</a></li>
+          <li><a href="price-lists.html">Ценови листи</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3>Информация</h3>
+        <ul>
+          <li><a href="complexes.html">Комплекси</a></li>
+          <li><a href="investors.html">Инвеститори</a></li>
+          <li><a href="areas.html">Райони</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3>Контакти</h3>
+        <ul>
+          <li><a href="https://newhomebulgaria.com/">NewHomeBulgaria</a></li>
+          <li><a href="contact.html">Контакти</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="copyright">© 2026 MaxAssistant</div>
+  </div>
+</footer>
+
+<script>
+let complexes = [];
+
+fetch("data/complexes.json")
+  .then(response => response.json())
+  .then(data => {
+    complexes = data;
+  })
+  .catch(error => {
+    console.error("Грешка при зареждане на базата:", error);
+  });
+
+document.getElementById("searchButton").addEventListener("click", function () {
+  const location = document.getElementById("location").value.toLowerCase();
+  const purpose = document.getElementById("purpose").value.toLowerCase();
+  const beach = document.getElementById("beach").value.toLowerCase();
+  const maintenance = document.getElementById("maintenance").value.toLowerCase();
+  const freeText = document.getElementById("freeText").value.toLowerCase();
+
+  const results = complexes.map(item => {
+    let score = 0;
+
+    const allText = JSON.stringify(item).toLowerCase();
+
+    if (location && item.location.toLowerCase().includes(location)) score += 30;
+
+    if (purpose && item.good_for && item.good_for.join(" ").toLowerCase().includes(purpose)) score += 30;
+
+    if (purpose && item.not_good_for && item.not_good_for.join(" ").toLowerCase().includes(purpose)) score -= 25;
+
+    if (beach && item.beach_distance.toLowerCase().includes(beach)) score += 15;
+
+    if (maintenance && item.maintenance_fee_level.toLowerCase().includes(maintenance)) score += 10;
+
+    freeText.split(/\s+/).forEach(word => {
+      if (word.length > 2 && allText.includes(word)) score += 5;
+    });
+
+    return { ...item, score };
+  })
+  .filter(item => item.score > 0)
+  .sort((a, b) => b.score - a.score);
+
+  const resultsBox = document.getElementById("results");
+
+  if (!results.length) {
+    resultsBox.innerHTML = `
+      <div class="card">
+        <h3>Няма точен резултат</h3>
+        <p>
+          Това не означава, че няма подходящ имот. Базата знания тепърва ще се разширява.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  resultsBox.innerHTML = results.map(item => `
+    <div class="card">
+      <h3>${item.name}</h3>
+      <p><strong>Локация:</strong> ${item.location}, ${item.area}</p>
+      <p><strong>Подходящ за:</strong> ${item.good_for.join(", ")}</p>
+      <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for.join(", ")}</p>
+      <p><strong>Близост до плаж:</strong> ${item.beach_distance}</p>
+      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level}</p>
+      <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
+      <p><strong>Силни страни:</strong> ${item.strengths.join(", ")}</p>
+      <p><strong>Рискове:</strong> ${item.weaknesses.join(", ")}</p>
+    </div>
+  `).join("");
+});
+</script>
+
+</body>
+</html>
