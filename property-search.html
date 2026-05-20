@@ -36,8 +36,8 @@
     <h1 class="section-title">AI търсачка за имоти по морето</h1>
 
     <p class="section-text">
-      Опишете какъв имот търсите. MaxAssistant ще сравни вашите критерии
-      с наличната база знания за комплекси, райони и инвестиционен потенциал.
+      Изберете критерии или задайте въпрос със свободен текст. MaxAssistant ще сравни търсенето
+      с базата знания за комплекси, райони, Акт 16, разсрочване, такси и начин на издаване.
     </p>
 
     <div class="card">
@@ -60,6 +60,19 @@
           <option value="целогодишно живеене">Целогодишно живеене</option>
         </select>
 
+        <select id="act16">
+          <option value="">Акт 16</option>
+          <option value="да">Има Акт 16</option>
+          <option value="частично">Частично / зависи от сградата</option>
+          <option value="не">Няма Акт 16</option>
+        </select>
+
+        <select id="installment">
+          <option value="">Разсрочване</option>
+          <option value="да">Има разсрочване</option>
+          <option value="не">Няма стандартно разсрочване</option>
+        </select>
+
         <select id="beach">
           <option value="">Близост до плаж</option>
           <option value="много близо">Много близо до плаж</option>
@@ -72,7 +85,7 @@
           <option value="висока">Висока</option>
         </select>
 
-        <textarea id="freeText" placeholder="Допълнително: тишина, разсрочване, Акт 16, гледка море, ниска такса..."></textarea>
+        <textarea id="freeText" placeholder="Например: има ли Акт 16, има ли разсрочване, как се издават апартаментите, подходящ ли е за целогодишно живеене..."></textarea>
 
       </div>
 
@@ -137,24 +150,46 @@ fetch("data/complexes.json")
 document.getElementById("searchButton").addEventListener("click", function () {
   const location = document.getElementById("location").value.toLowerCase();
   const purpose = document.getElementById("purpose").value.toLowerCase();
+  const act16 = document.getElementById("act16").value.toLowerCase();
+  const installment = document.getElementById("installment").value.toLowerCase();
   const beach = document.getElementById("beach").value.toLowerCase();
   const maintenance = document.getElementById("maintenance").value.toLowerCase();
   const freeText = document.getElementById("freeText").value.toLowerCase();
 
   const results = complexes.map(item => {
     let score = 0;
-
     const allText = JSON.stringify(item).toLowerCase();
 
-    if (location && item.location.toLowerCase().includes(location)) score += 30;
+    if (location && item.location && item.location.toLowerCase().includes(location)) score += 30;
 
     if (purpose && item.good_for && item.good_for.join(" ").toLowerCase().includes(purpose)) score += 30;
 
     if (purpose && item.not_good_for && item.not_good_for.join(" ").toLowerCase().includes(purpose)) score -= 25;
 
-    if (beach && item.beach_distance.toLowerCase().includes(beach)) score += 15;
+    if (act16 && item.act16_status && item.act16_status.toLowerCase().includes(act16)) score += 25;
 
-    if (maintenance && item.maintenance_fee_level.toLowerCase().includes(maintenance)) score += 10;
+    if (installment === "да" && item.installment_plan === true) score += 25;
+    if (installment === "не" && item.installment_plan === false) score += 20;
+
+    if (beach && item.beach_distance && item.beach_distance.toLowerCase().includes(beach)) score += 15;
+
+    if (maintenance && item.maintenance_fee_level && item.maintenance_fee_level.toLowerCase().includes(maintenance)) score += 10;
+
+    if (freeText.includes("акт 16") || freeText.includes("акт16")) {
+      if (item.act16_status) score += 18;
+    }
+
+    if (freeText.includes("разсроч")) {
+      if (item.installment_note) score += 18;
+    }
+
+    if (freeText.includes("издава") || freeText.includes("завършен") || freeText.includes("до ключ")) {
+      if (item.finish_stage) score += 18;
+    }
+
+    if (freeText.includes("паркиране") || freeText.includes("паркинг")) {
+      if (item.parking) score += 12;
+    }
 
     freeText.split(/\s+/).forEach(word => {
       if (word.length > 2 && allText.includes(word)) score += 5;
@@ -182,27 +217,36 @@ document.getElementById("searchButton").addEventListener("click", function () {
   resultsBox.innerHTML = results.map(item => `
     <div class="card">
       <h3>${item.name}</h3>
-      <p><strong>Локация:</strong> ${item.location}, ${item.area}</p>
-      <p><strong>Подходящ за:</strong> ${item.good_for.join(", ")}</p>
-      <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for.join(", ")}</p>
-      <p><strong>Близост до плаж:</strong> ${item.beach_distance}</p>
-      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level}</p>
-      <p><strong>Акт 16:</strong> ${item.act16 ? "Да" : "Не"}</p>
 
-<p><strong>Разсрочване:</strong>
-${item.installment_plan ? act16_status}
-</p>
+      <p><strong>Локация:</strong> ${item.location || "Няма данни"}${item.area ? ", " + item.area : ""}</p>
 
-<p><strong>Издаване:</strong>
-${item.finish_stage}
-</p>
+      <p><strong>Подходящ за:</strong> ${item.good_for ? item.good_for.join(", ") : "Няма данни"}</p>
 
-<p><strong>Статус:</strong>
-${item.completion_status}
-</p>
+      <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for ? item.not_good_for.join(", ") : "Няма данни"}</p>
+
+      <p><strong>Акт 16:</strong> ${item.act16_status || "Няма въведена информация"}</p>
+
+      <p><strong>Уточнение за Акт 16:</strong> ${item.act16_note || "Няма въведена информация"}</p>
+
+      <p><strong>Разсрочване:</strong> ${item.installment_plan ? "Да" : "Не / няма стандартна схема"}</p>
+
+      <p><strong>Условия за разсрочване:</strong> ${item.installment_note || "Няма въведена информация"}</p>
+
+      <p><strong>Издаване:</strong> ${item.finish_stage || "Няма въведена информация"}</p>
+
+      <p><strong>Паркиране:</strong> ${item.parking || "Проверява се според конкретния имот"}</p>
+
+      <p><strong>Статус:</strong> ${item.completion_status || "Няма въведена информация"}</p>
+
+      <p><strong>Близост до плаж:</strong> ${item.beach_distance || "Няма данни"}</p>
+
+      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level || "Няма данни"}</p>
+
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
-      <p><strong>Силни страни:</strong> ${item.strengths.join(", ")}</p>
-      <p><strong>Рискове:</strong> ${item.weaknesses.join(", ")}</p>
+
+      <p><strong>Силни страни:</strong> ${item.strengths ? item.strengths.join(", ") : "Няма данни"}</p>
+
+      <p><strong>Рискове:</strong> ${item.weaknesses ? item.weaknesses.join(", ") : "Няма данни"}</p>
     </div>
   `).join("");
 });
