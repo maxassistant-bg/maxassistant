@@ -237,5 +237,64 @@
     "investor": "City Residence",
 
     "source": "NewHomeBulgaria"
-  }
+  },
+{
+  "id": 5,
+
+  "complex": "Cascadas Family Resort",
+
+  "building": "Cascadas",
+
+  "location": "Слънчев бряг",
+
+  "property_type": "две спални",
+
+  "rooms": 3,
+
+  "area": 68,
+
+  "floor": null,
+
+  "bathrooms": 1,
+
+  "toilets": 1,
+
+  "balconies": 1,
+
+  "storage_room": false,
+
+  "walk_in_closet": false,
+
+  "basement": false,
+
+  "view": "комплекс / вътрешна среда",
+
+  "furnishing_status": "обзаведен",
+
+  "price": 137500,
+
+  "price_per_m2": 2022,
+
+  "construction": "тухла",
+
+  "construction_stage": "завършено строителство",
+
+  "completion_status": "обзаведен",
+
+  "act16": true,
+
+  "beach_line": "3-та линия",
+
+  "maintenance_fee": null,
+
+  "year_round": true,
+
+  "parking": false,
+
+  "furnished": true,
+
+  "investor": "Cascadas",
+
+  "source": "NewHomeBulgaria"
+}
 ]
