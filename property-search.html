@@ -187,6 +187,19 @@ document.getElementById("searchButton").addEventListener("click", function () {
       <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for.join(", ")}</p>
       <p><strong>Близост до плаж:</strong> ${item.beach_distance}</p>
       <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level}</p>
+      <p><strong>Акт 16:</strong> ${item.act16 ? "Да" : "Не"}</p>
+
+<p><strong>Разсрочване:</strong>
+${item.installment_plan ? "Да" : "Не"}
+</p>
+
+<p><strong>Издаване:</strong>
+${item.finish_stage}
+</p>
+
+<p><strong>Статус:</strong>
+${item.completion_status}
+</p>
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
       <p><strong>Силни страни:</strong> ${item.strengths.join(", ")}</p>
       <p><strong>Рискове:</strong> ${item.weaknesses.join(", ")}</p>
