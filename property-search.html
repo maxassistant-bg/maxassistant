@@ -191,9 +191,30 @@ document.getElementById("searchButton").addEventListener("click", function () {
       if (item.parking) score += 12;
     }
 
-    freeText.split(/\s+/).forEach(word => {
-      if (word.length > 2 && allText.includes(word)) score += 5;
+   const words = freeText.split(/\s+/);
+
+words.forEach(word => {
+
+  if (word.length > 2 && allText.includes(word)) {
+    score += 5;
+  }
+
+  if (item.tags) {
+
+    item.tags.forEach(tag => {
+
+      if (
+        tag.toLowerCase().includes(word) ||
+        word.includes(tag.toLowerCase())
+      ) {
+        score += 15;
+      }
+
     });
+
+  }
+
+});
 
    let aiAnswer = [];
 
