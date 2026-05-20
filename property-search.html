@@ -264,6 +264,25 @@ if (freeText.includes("целогодиш")) {
 
 let recommendationReasons = [];
 
+    if (
+  freeText.includes("зеленина") ||
+  freeText.includes("природа") ||
+  freeText.includes("спокойствие")
+) {
+
+  if (
+    item.environment_profile &&
+    item.environment_profile.includes("зеленина")
+  ) {
+
+    recommendationReasons.push(
+      "комплексът предлага повече зеленина и resort атмосфера"
+    );
+
+  }
+
+}
+
 if (purpose === "почивка") {
   recommendationReasons.push(
     "подходящ е за сезонно ползване и почивка"
