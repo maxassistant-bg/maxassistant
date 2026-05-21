@@ -378,6 +378,26 @@ document.getElementById("searchButton").addEventListener("click", function () {
   }
 
 }
+    if (includesAny(freeText, ["море", "морска гледка", "гледка към морето", "първа линия", "близо до плажа", "плаж"])) {
+
+  if (property.sea_view === true) {
+    score += 25;
+    reasons.push("имотът има морска гледка");
+    aiAnswer.push("Този имот е отбелязан като имот с морска гледка.");
+  }
+
+  if (property.first_line === true || (complexInfo && complexInfo.first_line === true)) {
+    score += 25;
+    reasons.push("имотът или комплексът е близо до морето");
+    aiAnswer.push("Имотът или комплексът е отбелязан като първа линия или много близо до плажа.");
+  }
+
+  if (complexInfo && complexInfo.beach_distance) {
+    score += 12;
+    aiAnswer.push("Разстояние до плажа: " + complexInfo.beach_distance);
+  }
+
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
