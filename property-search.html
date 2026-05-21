@@ -363,6 +363,21 @@ document.getElementById("searchButton").addEventListener("click", function () {
   }
 
 }
+    if (includesAny(freeText, ["акт 16", "act 16", "готов имот", "завършен", "строеж", "в строеж", "на зелено"])) {
+
+  if (property.act16 === true || (complexInfo && complexInfo.act16 === true)) {
+    score += 20;
+    reasons.push("имотът или комплексът е с Акт 16");
+    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като завършен и с Акт 16.");
+  } else if (property.under_construction === true || (complexInfo && complexInfo.under_construction === true)) {
+    score += 15;
+    reasons.push("имотът или комплексът е в строеж");
+    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като строящ се.");
+  } else {
+    aiAnswer.push("За статута на строителство или Акт 16 няма достатъчно въведена информация и трябва да се провери допълнително.");
+  }
+
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
