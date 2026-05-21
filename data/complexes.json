@@ -354,5 +354,90 @@
   "nature_score": 8,
 
   "description": "Бутикова жилищна сграда в центъра на Черноморец без такса поддръжка, подходяща за целогодишно живеене и инвестиция."
+},
+{
+  "name": "Vista Verde",
+
+  "location": "Бургас",
+
+  "district": "Меден рудник",
+
+  "type": "urban residential building",
+
+  "beach_distance": null,
+
+  "beach_line": "градска среда",
+
+  "construction_stage": "в строителство",
+
+  "act16": false,
+
+  "maintenance_fee": 0,
+
+  "year_round": true,
+
+  "installments": true,
+
+  "elevator": true,
+
+  "pool": false,
+
+  "spa": false,
+
+  "restaurant": false,
+
+  "parking": true,
+
+  "garage_option": true,
+
+  "target_clients": [
+    "целогодишно живеене",
+    "семейства",
+    "инвестиция",
+    "първо жилище"
+  ],
+
+  "strengths": [
+    "градска инфраструктура",
+    "подходящо за целогодишно живеене",
+    "ново строителство",
+    "добра локация",
+    "подходящо за семейства",
+    "близо до магазини и транспорт",
+    "възможност за разсрочено плащане"
+  ],
+
+  "weaknesses": [
+    "не е морски resort",
+    "няма басейн",
+    "няма СПА",
+    "няма ваканционна атмосфера"
+  ],
+
+  "lifestyle": [
+    "градски живот",
+    "целогодишно живеене",
+    "локална среда",
+    "семейна среда",
+    "ежедневно удобство"
+  ],
+
+  "infrastructure_score": 9,
+
+  "rental_score": 7,
+
+  "family_score": 9,
+
+  "luxury_score": 5,
+
+  "investment_score": 8,
+
+  "quiet_score": 7,
+
+  "nightlife_score": 4,
+
+  "nature_score": 5,
+
+  "description": "Модерна жилищна сграда в Бургас, подходяща за целогодишно живеене, семейства и инвестиция."
 }
 ]
