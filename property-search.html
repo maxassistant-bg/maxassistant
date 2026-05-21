@@ -412,13 +412,6 @@ document.getElementById("searchButton").addEventListener("click", function () {
       }
     }
 
-    if (includesAny(freeText, ["разсроч", "вноски", "плащане"])) {
-      if (complexInfo && complexInfo.installment_note) {
-        score += 12;
-        aiAnswer.push("По въпроса за разсрочване: " + complexInfo.installment_note);
-      }
-    }
-
     if (includesAny(freeText, ["обзавед", "мебел", "готов", "до ключ", "издава"])) {
       score += 10;
       aiAnswer.push(
