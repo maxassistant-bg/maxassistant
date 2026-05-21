@@ -297,6 +297,19 @@ document.getElementById("searchButton").addEventListener("click", function () {
     aiAnswer.push("Важно: този имот или комплекс не е отбелязан като оптимален за целогодишно живеене. По-скоро е подходящ за сезонно ползване, почивка или летни наеми.");
   }
 }
+    if (includesAny(freeText, ["инфраструктура", "магазини", "автобус", "транспорт", "училище", "детска градина", "болница", "аптека"])) {
+  if (complexInfo && complexInfo.infrastructure) {
+    score += 18;
+    reasons.push("има налична информация за инфраструктурата около комплекса");
+    aiAnswer.push("По отношение на инфраструктурата: " + complexInfo.infrastructure);
+  } else if (property.infrastructure) {
+    score += 14;
+    reasons.push("има информация за инфраструктурата около имота");
+    aiAnswer.push("По отношение на инфраструктурата: " + property.infrastructure);
+  } else {
+    aiAnswer.push("За инфраструктурата около този имот няма достатъчно въведена информация и е добре да се провери допълнително.");
+  }
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
