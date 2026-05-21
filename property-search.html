@@ -400,17 +400,6 @@ document.getElementById("searchButton").addEventListener("click", function () {
   }
 
 }
-    if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
-      if (property.act16 === true) {
-        score += 20;
-        aiAnswer.push("За този имот е отбелязано, че има Акт 16 / разрешение за ползване.");
-      } else if (complexInfo && complexInfo.act16_note) {
-        score += 10;
-        aiAnswer.push("За комплекса: " + complexInfo.act16_note);
-      } else {
-        aiAnswer.push("Няма достатъчно въведена информация за Акт 16 при този имот.");
-      }
-    }
 
     if (includesAny(freeText, ["обзавед", "мебел", "готов", "до ключ", "издава"])) {
       score += 10;
