@@ -423,13 +423,6 @@ document.getElementById("searchButton").addEventListener("click", function () {
       }
     }
 
-    if (includesAny(freeText, ["наем", "отдаване", "инвестиция"])) {
-      if (complexInfo && normalizeText(complexInfo.rental_potential).includes("висок")) {
-        score += 18;
-        reasons.push("комплексът има добър потенциал за отдаване под наем");
-      }
-    }
-
     freeWords.forEach(word => {
       if (allText.includes(word)) {
         score += 4;
