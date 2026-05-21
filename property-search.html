@@ -416,13 +416,6 @@ document.getElementById("searchButton").addEventListener("click", function () {
       }
     }
 
-    if (includesAny(freeText, ["инфраструктура", "град", "активност", "център"])) {
-      if (complexInfo && (arrayIncludesText(complexInfo.environment_profile, "градска среда") || arrayIncludesText(complexInfo.tags, "инфраструктура"))) {
-        score += 20;
-        reasons.push("комплексът предлага по-градска среда и инфраструктура");
-      }
-    }
-
     freeWords.forEach(word => {
       if (allText.includes(word)) {
         score += 4;
