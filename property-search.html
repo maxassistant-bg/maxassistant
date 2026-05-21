@@ -352,6 +352,17 @@ document.getElementById("searchButton").addEventListener("click", function () {
   }
 
 }
+    if (includesAny(freeText, ["разсрочване", "разсрочено", "вноски", "плащане на вноски", "гъвкаво плащане", "схема на плащане"])) {
+
+  if (property.installment === true || (complexInfo && complexInfo.installment === true)) {
+    score += 20;
+    reasons.push("има възможност за разсрочено плащане");
+    aiAnswer.push("За този имот или комплекс има отбелязана възможност за разсрочено плащане.");
+  } else {
+    aiAnswer.push("Не е отбелязана възможност за разсрочено плащане. Това трябва да се провери допълнително според конкретния имот и продавач.");
+  }
+
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
