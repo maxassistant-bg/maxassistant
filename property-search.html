@@ -337,6 +337,21 @@ document.getElementById("searchButton").addEventListener("click", function () {
   }
 
 }
+    if (includesAny(freeText, ["инвестиция", "доходност", "наем", "отдаване", "booking", "airbnb", "сезонни наеми", "краткосрочен наем"])) {
+
+  if (complexInfo && complexInfo.rental_potential) {
+    score += 22;
+    reasons.push("има добър потенциал за отдаване под наем");
+    aiAnswer.push("Като инвестиция и отдаване под наем: " + complexInfo.rental_potential);
+  } else if (property.rental_potential) {
+    score += 18;
+    reasons.push("имотът има описан потенциал за наем");
+    aiAnswer.push("Като инвестиция и отдаване под наем: " + property.rental_potential);
+  } else {
+    aiAnswer.push("За потенциала за отдаване под наем няма достатъчно въведена информация и трябва да се оцени според локацията, сезона и типа имот.");
+  }
+
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
