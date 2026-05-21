@@ -314,7 +314,9 @@ document.getElementById("searchButton").addEventListener("click", function () {
 
   if (complexInfo && complexInfo.environment) {
 
-    const env = complexInfo.environment.toLowerCase();
+    const env = Array.isArray(complexInfo.environment)
+  ? complexInfo.environment.join(" ").toLowerCase()
+  : String(complexInfo.environment).toLowerCase();
 
     if (
       includesAny(freeText, ["тихо", "спокойно", "тишина"]) &&
