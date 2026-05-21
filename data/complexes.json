@@ -273,5 +273,86 @@
     "няма голяма озеленена територия",
     "не е първа линия"
   ]
+},
+{
+  "name": "Casa Blanca",
+  "location": "Черноморец",
+
+  "type": "boutique residential building",
+
+  "beach_distance": 440,
+
+  "beach_line": "2-ра линия",
+
+  "construction_stage": "в строителство",
+
+  "act16": false,
+
+  "maintenance_fee": 0,
+
+  "year_round": true,
+
+  "installments": true,
+
+  "elevator": false,
+
+  "pool": false,
+
+  "spa": false,
+
+  "restaurant": false,
+
+  "parking": true,
+
+  "garage_option": true,
+
+  "target_clients": [
+    "целогодишно живеене",
+    "семейства",
+    "инвестиция",
+    "втори дом"
+  ],
+
+  "strengths": [
+    "централна локация",
+    "без такса поддръжка",
+    "бутикова сграда",
+    "спокойна среда",
+    "подходящо за целогодишно живеене",
+    "добра инфраструктура",
+    "възможност за разсрочено плащане"
+  ],
+
+  "weaknesses": [
+    "няма басейн",
+    "няма СПА",
+    "няма resort инфраструктура"
+  ],
+
+  "lifestyle": [
+    "спокойствие",
+    "морски град",
+    "локална среда",
+    "целогодишен живот",
+    "по-ниска гъстота"
+  ],
+
+  "infrastructure_score": 8,
+
+  "rental_score": 6,
+
+  "family_score": 9,
+
+  "luxury_score": 6,
+
+  "investment_score": 7,
+
+  "quiet_score": 9,
+
+  "nightlife_score": 3,
+
+  "nature_score": 8,
+
+  "description": "Бутикова жилищна сграда в центъра на Черноморец без такса поддръжка, подходяща за целогодишно живеене и инвестиция."
 }
 ]
