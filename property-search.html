@@ -310,6 +310,33 @@ document.getElementById("searchButton").addEventListener("click", function () {
     aiAnswer.push("За инфраструктурата около този имот няма достатъчно въведена информация и е добре да се провери допълнително.");
   }
 }
+    if (includesAny(freeText, ["тихо", "спокойно", "тишина", "шумно", "нощен живот", "дискотеки", "парти"])) {
+
+  if (complexInfo && complexInfo.environment) {
+
+    const env = complexInfo.environment.toLowerCase();
+
+    if (
+      includesAny(freeText, ["тихо", "спокойно", "тишина"]) &&
+      includesAny(env, ["тихо", "спокойно", "зеленина", "природа"])
+    ) {
+      score += 20;
+      reasons.push("подходящо за хора търсещи спокойствие");
+      aiAnswer.push("Районът и средата около комплекса са по-спокойни и подходящи за почивка или по-тих начин на живот.");
+    }
+
+    if (
+      includesAny(freeText, ["шумно", "нощен живот", "дискотеки", "парти"]) &&
+      includesAny(env, ["нощен живот", "център", "заведения", "активен"])
+    ) {
+      score += 20;
+      reasons.push("подходящо за активен район и нощен живот");
+      aiAnswer.push("Този район е по-активен и е близо до заведения, развлечения или нощен живот.");
+    }
+
+  }
+
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
