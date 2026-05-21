@@ -288,6 +288,15 @@ document.getElementById("searchButton").addEventListener("click", function () {
     }
 
     /* Свободни въпроси */
+    if (includesAny(freeText, ["целогодишно", "постоянно живеене", "зимата", "живеене целогодишно"])) {
+  if (property.year_round === true || (complexInfo && complexInfo.year_round === true)) {
+    score += 22;
+    reasons.push("подходящо е за целогодишно ползване или по-дълъг сезон");
+    aiAnswer.push("По въпроса за целогодишно ползване: този имот или комплекс е отбелязан като по-подходящ за целогодишно живеене.");
+  } else {
+    aiAnswer.push("Важно: този имот или комплекс не е отбелязан като оптимален за целогодишно живеене. По-скоро е подходящ за сезонно ползване, почивка или летни наеми.");
+  }
+}
     if (includesAny(freeText, ["акт 16", "акт16", "разрешение за ползване"])) {
       if (property.act16 === true) {
         score += 20;
