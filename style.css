@@ -48,7 +48,7 @@ header{
 position:sticky;
 top:0;
 z-index:1000;
-background:rgba(5,5,9,.84);
+background:rgba(5,5,9,.88);
 backdrop-filter:blur(18px);
 border-bottom:1px solid var(--card-border);
 }
@@ -108,9 +108,7 @@ background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
 border:1px solid var(--card-border);
 border-radius:32px;
 padding:72px 50px;
-box-shadow:
-0 30px 90px rgba(0,0,0,.45),
-0 0 90px rgba(155,44,255,.12);
+box-shadow:0 30px 90px rgba(0,0,0,.45),0 0 90px rgba(155,44,255,.12);
 text-align:center;
 }
 
@@ -148,21 +146,21 @@ margin:0 auto 38px;
 
 .button{
 display:inline-block;
-padding:17px 30px;
+padding:15px 26px;
 border-radius:14px;
 background:linear-gradient(135deg,var(--purple),var(--accent));
 color:#fff;
 font-weight:800;
 text-decoration:none;
+border:0;
+cursor:pointer;
 box-shadow:0 15px 40px rgba(155,44,255,.32);
 transition:.25s ease;
 }
 
 .button:hover{
 transform:translateY(-3px);
-box-shadow:
-0 20px 60px rgba(155,44,255,.45),
-0 0 30px rgba(255,79,216,.25);
+box-shadow:0 20px 60px rgba(155,44,255,.45),0 0 30px rgba(255,79,216,.25);
 }
 
 /* SECTIONS */
@@ -185,6 +183,8 @@ max-width:780px;
 margin-bottom:35px;
 }
 
+/* CARDS */
+
 .grid{
 display:grid;
 grid-template-columns:repeat(3,1fr);
@@ -192,34 +192,47 @@ gap:24px;
 }
 
 .card{
-background:var(--card);
+background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
 border:1px solid var(--card-border);
 border-radius:24px;
 padding:28px;
-box-shadow:0 18px 55px rgba(0,0,0,.25);
+box-shadow:0 18px 55px rgba(0,0,0,.28);
 transition:.25s ease;
 min-width:0;
+overflow:hidden;
 }
 
 .card:hover{
-transform:translateY(-4px);
-border-color:rgba(192,108,255,.45);
-box-shadow:
-0 25px 70px rgba(0,0,0,.35),
-0 0 40px rgba(155,44,255,.13);
+transform:translateY(-3px);
+border-color:rgba(192,108,255,.42);
+box-shadow:0 25px 70px rgba(0,0,0,.35),0 0 40px rgba(155,44,255,.13);
 }
 
 .card h3{
-font-size:22px;
-margin-bottom:12px;
+font-size:24px;
+line-height:1.25;
+margin-bottom:18px;
+color:#fff;
 }
 
 .card p{
 color:var(--muted);
 font-size:16px;
+margin-bottom:8px;
+line-height:1.5;
 }
 
-/* FORMS */
+.card strong{
+color:#fff;
+}
+
+/* SEARCH */
+
+.search-grid{
+display:grid;
+grid-template-columns:1fr;
+gap:10px;
+}
 
 input,
 select,
@@ -232,6 +245,11 @@ background:rgba(255,255,255,.06);
 color:#fff;
 font-size:15px;
 outline:none;
+}
+
+textarea{
+min-height:70px;
+resize:vertical;
 }
 
 input::placeholder,
@@ -249,6 +267,86 @@ box-shadow:0 0 0 4px rgba(155,44,255,.12);
 select option{
 background:#10101a;
 color:#fff;
+}
+
+.search-button{
+margin-top:18px;
+}
+
+/* RESULTS */
+
+.results{
+display:grid;
+gap:34px;
+margin-top:46px;
+scroll-margin-top:160px;
+}
+
+.results .card{
+padding:0;
+}
+
+.results .card h3,
+.results .card p,
+.results .card .ai-answer,
+.results .card .property-link{
+margin-left:28px;
+margin-right:28px;
+}
+
+.results .card h3{
+margin-top:24px;
+}
+
+.property-image{
+width:100%;
+height:310px;
+object-fit:cover;
+display:block;
+border-radius:24px 24px 0 0;
+margin-bottom:0;
+}
+
+.property-link{
+margin-top:18px;
+margin-bottom:22px;
+width:auto;
+}
+
+.ai-answer{
+margin-top:22px;
+margin-bottom:22px;
+padding:18px;
+border-radius:18px;
+background:rgba(155,44,255,.14);
+border:1px solid rgba(192,108,255,.35);
+}
+
+.ai-answer strong{
+display:block;
+margin-bottom:8px;
+color:#fff;
+}
+
+.ai-answer ul{
+margin-top:10px;
+padding-left:20px;
+}
+
+.ai-answer li{
+margin-bottom:8px;
+color:var(--muted);
+}
+
+.ai-answer p{
+margin-bottom:6px;
+}
+
+.new-search-button{
+margin:20px 0;
+border:0;
+cursor:pointer;
+width:auto;
 }
 
 /* FOOTER */
@@ -374,6 +472,10 @@ margin-top:55px;
 padding:45px 0 28px;
 }
 
+.property-image{
+height:280px;
+}
+
 }
 
 /* MOBILE */
@@ -391,18 +493,18 @@ padding:14px 0;
 }
 
 .logo{
-font-size:24px;
+font-size:30px;
 }
 
 nav ul{
 display:flex;
 flex-wrap:wrap;
 justify-content:center;
-gap:9px 10px;
+gap:9px 12px;
 }
 
 nav a{
-font-size:12px;
+font-size:14px;
 padding:3px 0;
 }
 
@@ -450,7 +552,55 @@ border-radius:20px;
 }
 
 .card h3{
-font-size:20px;
+font-size:21px;
+}
+
+.card p{
+font-size:16px;
+margin-bottom:9px;
+line-height:1.48;
+}
+
+.results{
+gap:32px;
+margin-top:40px;
+}
+
+.results .card{
+padding:0;
+border-radius:22px;
+}
+
+.results .card h3,
+.results .card p,
+.results .card .ai-answer,
+.results .card .property-link{
+margin-left:20px;
+margin-right:20px;
+}
+
+.results .card h3{
+margin-top:22px;
+font-size:22px;
+}
+
+.property-image{
+height:220px;
+border-radius:22px 22px 0 0;
+}
+
+.ai-answer{
+padding:16px;
+border-radius:16px;
+}
+
+.property-link{
+margin-top:16px;
+margin-bottom:20px;
+}
+
+.new-search-button{
+width:100%;
 }
 
 footer{
@@ -472,205 +622,6 @@ margin-bottom:10px;
 .footer-grid li{
 margin-bottom:8px;
 }
-<!DOCTYPE html>
-<html lang="bg">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>AI търсачка - MaxAssistant</title>
-
-<link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-
-<header>
-  <div class="container navbar">
-    <a href="index.html" class="logo">MaxAssistant</a>
-
-    <nav>
-      <ul>
-        <li><a href="index.html">Начало</a></li>
-        <li><a href="property-search.html">AI търсачка</a></li>
-        <li><a href="complexes.html">Комплекси</a></li>
-        <li><a href="investors.html">Инвеститори</a></li>
-        <li><a href="price-lists.html">Ценови листи</a></li>
-        <li><a href="areas.html">Райони</a></li>
-        <li><a href="ai-consultant.html">AI консултант</a></li>
-        <li><a href="contact.html">Контакти</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
-
-<section class="section">
-  <div class="container">
-
-    <h1 class="section-title">AI търсачка за имоти по морето</h1>
-
-    <p class="section-text">
-      Опишете какъв имот търсите. MaxAssistant ще сравни вашите критерии
-      с наличната база знания за комплекси, райони и инвестиционен потенциал.
-    </p>
-
-    <div class="card">
-      <div class="search-grid">
-
-        <select id="location">
-          <option value="">Локация</option>
-          <option value="Созопол">Созопол</option>
-          <option value="Слънчев бряг">Слънчев бряг</option>
-          <option value="Свети Влас">Свети Влас</option>
-          <option value="Бургас">Бургас</option>
-          <option value="Черноморец">Черноморец</option>
-        </select>
-
-        <select id="purpose">
-          <option value="">Цел</option>
-          <option value="почивка">Почивка</option>
-          <option value="инвестиция">Инвестиция</option>
-          <option value="отдаване под наем">Отдаване под наем</option>
-          <option value="целогодишно живеене">Целогодишно живеене</option>
-        </select>
-
-        <select id="beach">
-          <option value="">Близост до плаж</option>
-          <option value="много близо">Много близо до плаж</option>
-        </select>
-
-        <select id="maintenance">
-          <option value="">Такса поддръжка</option>
-          <option value="ниска">Ниска</option>
-          <option value="средна">Средна</option>
-          <option value="висока">Висока</option>
-        </select>
-
-        <textarea id="freeText" placeholder="Допълнително: тишина, разсрочване, Акт 16, гледка море, ниска такса..."></textarea>
-
-      </div>
-
-      <button class="button search-button" id="searchButton">
-        Покажи подходящи комплекси
-      </button>
-    </div>
-
-    <div id="results" class="results"></div>
-
-  </div>
-</section>
-
-<footer>
-  <div class="container">
-    <div class="footer-grid">
-
-      <div>
-        <h3>AI Система</h3>
-        <ul>
-          <li><a href="property-search.html">AI търсачка</a></li>
-          <li><a href="ai-consultant.html">AI консултант</a></li>
-          <li><a href="price-lists.html">Ценови листи</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h3>Информация</h3>
-        <ul>
-          <li><a href="complexes.html">Комплекси</a></li>
-          <li><a href="investors.html">Инвеститори</a></li>
-          <li><a href="areas.html">Райони</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h3>Контакти</h3>
-        <ul>
-          <li><a href="https://newhomebulgaria.com/">NewHomeBulgaria</a></li>
-          <li><a href="contact.html">Контакти</a></li>
-        </ul>
-      </div>
-
-    </div>
-
-    <div class="copyright">© 2026 MaxAssistant</div>
-  </div>
-</footer>
-
-<script>
-let complexes = [];
-
-fetch("data/complexes.json")
-  .then(response => response.json())
-  .then(data => {
-    complexes = data;
-  })
-  .catch(error => {
-    console.error("Грешка при зареждане на базата:", error);
-  });
-
-document.getElementById("searchButton").addEventListener("click", function () {
-  const location = document.getElementById("location").value.toLowerCase();
-  const purpose = document.getElementById("purpose").value.toLowerCase();
-  const beach = document.getElementById("beach").value.toLowerCase();
-  const maintenance = document.getElementById("maintenance").value.toLowerCase();
-  const freeText = document.getElementById("freeText").value.toLowerCase();
-
-  const results = complexes.map(item => {
-    let score = 0;
-
-    const allText = JSON.stringify(item).toLowerCase();
-
-    if (location && item.location.toLowerCase().includes(location)) score += 30;
-
-    if (purpose && item.good_for && item.good_for.join(" ").toLowerCase().includes(purpose)) score += 30;
-
-    if (purpose && item.not_good_for && item.not_good_for.join(" ").toLowerCase().includes(purpose)) score -= 25;
-
-    if (beach && item.beach_distance.toLowerCase().includes(beach)) score += 15;
-
-    if (maintenance && item.maintenance_fee_level.toLowerCase().includes(maintenance)) score += 10;
-
-    freeText.split(/\s+/).forEach(word => {
-      if (word.length > 2 && allText.includes(word)) score += 5;
-    });
-
-    return { ...item, score };
-  })
-  .filter(item => item.score > 0)
-  .sort((a, b) => b.score - a.score);
-
-  const resultsBox = document.getElementById("results");
-
-  if (!results.length) {
-    resultsBox.innerHTML = `
-      <div class="card">
-        <h3>Няма точен резултат</h3>
-        <p>
-          Това не означава, че няма подходящ имот. Базата знания тепърва ще се разширява.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  resultsBox.innerHTML = results.map(item => `
-    <div class="card">
-      <h3>${item.name}</h3>
-      <p><strong>Локация:</strong> ${item.location}, ${item.area}</p>
-      <p><strong>Подходящ за:</strong> ${item.good_for.join(", ")}</p>
-      <p><strong>Не е препоръчителен за:</strong> ${item.not_good_for.join(", ")}</p>
-      <p><strong>Близост до плаж:</strong> ${item.beach_distance}</p>
-      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee_level}</p>
-      <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
-      <p><strong>Силни страни:</strong> ${item.strengths.join(", ")}</p>
-      <p><strong>Рискове:</strong> ${item.weaknesses.join(", ")}</p>
-    </div>
-  `).join("");
-});
-</script>
-
-</body>
-</html>
 
 .footer-grid a{
 font-size:15px;
@@ -683,61 +634,4 @@ padding-top:16px;
 font-size:13px;
 }
 
-}.ai-answer{
-margin:18px 0;
-padding:18px;
-border-radius:18px;
-background:rgba(155,44,255,.12);
-border:1px solid rgba(192,108,255,.35);
-}
-
-.ai-answer ul{
-margin-top:10px;
-padding-left:20px;
-}
-
-.ai-answer li{
-margin-bottom:8px;
-color:var(--muted);
-}
-.new-search-button{
-margin:20px 0;
-border:0;
-cursor:pointer;
-width:auto;
-}
-
-@media(max-width:520px){
-.new-search-button{
-width:100%;
-}
-.results{
-display:grid;
-gap:34px;
-margin-top:46px;
-scroll-margin-top:180px;
-}
-
-.results .card{
-margin-bottom:0;
-}
-.property-image{
-width:100%;
-height:auto;
-max-height:260px;
-object-fit:cover;
-border-radius:18px;
-margin-bottom:18px;
-display:block;
-}
-
-.property-link{
-margin:14px 0 20px;
-}
-
-@media(max-width:520px){
-.property-image{
-max-height:220px;
-border-radius:16px;
-}
 }
