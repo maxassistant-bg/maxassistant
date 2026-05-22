@@ -496,6 +496,13 @@ function renderResults(results) {
     ${item.image ? `
   <img src="${item.image}" alt="${item.complex}" class="property-image">
 ` : ""}
+
+      ${item.price ? `
+        <div class="property-price-hero">
+          ${Number(item.price).toLocaleString()} €
+        </div>
+      ` : ""}
+
       <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
 
       ${item.aiAnswer && item.aiAnswer.length ? `
@@ -528,7 +535,6 @@ function renderResults(results) {
 
 <p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
       <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
-      <p><strong>Цена:</strong> ${item.price ? Number(item.price).toLocaleString() + " €" : "Няма данни"}</p>
       <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
       <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
       <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
