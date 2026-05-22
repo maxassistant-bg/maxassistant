@@ -1,606 +1,717 @@
-<!DOCTYPE html>
-<html lang="bg">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>AI търсачка - MaxAssistant</title>
-
-<link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-
-<header>
-  <div class="container navbar">
-    <a href="index.html" class="logo">MaxAssistant</a>
-
-    <nav>
-      <ul>
-        <li><a href="index.html">Начало</a></li>
-        <li><a href="property-search.html">AI търсачка</a></li>
-        <li><a href="complexes.html">Комплекси</a></li>
-        <li><a href="investors.html">Инвеститори</a></li>
-        <li><a href="price-lists.html">Ценови листи</a></li>
-        <li><a href="areas.html">Райони</a></li>
-        <li><a href="ai-consultant.html">AI консултант</a></li>
-        <li><a href="contact.html">Контакти</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
-
-<section class="section">
-  <div class="container">
-
-    <h1 class="section-title">AI търсачка за имоти по морето</h1>
-
-    <p class="section-text">
-      Търсене в конкретни апартаменти, ценови листи и AI база знания за комплекси.
-      Първо се показват реалните имоти, а след това MaxAssistant добавя контекст за комплекса.
-    </p>
-
-    <div class="card">
-      <div class="search-grid">
-
-        <select id="location">
-          <option value="">Локация</option>
-          <option value="Созопол">Созопол</option>
-          <option value="Слънчев бряг">Слънчев бряг</option>
-          <option value="Свети Влас">Свети Влас</option>
-          <option value="Бургас">Бургас</option>
-          <option value="Черноморец">Черноморец</option>
-        </select>
-
-        <select id="propertyType">
-          <option value="">Тип имот</option>
-          <option value="студио">Студио</option>
-          <option value="една спалня">Една спалня</option>
-          <option value="две спални">Две спални</option>
-          <option value="къща">Къща / вила</option>
-        </select>
-
-        <select id="rooms">
-          <option value="">Брой стаи</option>
-          <option value="1">1 стая</option>
-          <option value="2">2 стаи</option>
-          <option value="3">3 стаи</option>
-          <option value="4">4+ стаи</option>
-        </select>
-
-        <input type="number" id="budget" placeholder="Бюджет до €">
-
-        <input type="number" id="minArea" placeholder="Минимална площ кв.м">
-
-        <select id="constructionStage">
-          <option value="">Етап на строителство</option>
-          <option value="в строителство">В строителство</option>
-          <option value="завършено">Завършено</option>
-          <option value="завършено с разрешение за ползване">С разрешение за ползване</option>
-        </select>
-
-        <select id="beachLine">
-          <option value="">Линия до море / плаж</option>
-          <option value="1-ва линия">1-ва линия</option>
-          <option value="2-ра линия">2-ра линия</option>
-          <option value="3-та линия">3-та линия</option>
-        </select>
-
-        <select id="maintenance">
-          <option value="">Такса поддръжка</option>
-          <option value="ниска">Ниска</option>
-          <option value="средна">Средна</option>
-          <option value="висока">Висока</option>
-        </select>
-
-        <textarea id="freeText" placeholder="Свободен въпрос: има ли Акт 16, разсрочване, как се издава, подходящ ли е за наеми, искам зеленина, плаж, инфраструктура..."></textarea>
-
-      </div>
-
-      <button class="button search-button" id="searchButton">
-        Търси имоти
-      </button>
-    </div>
-
-    <div id="results" class="results"></div>
-
-  </div>
-</section>
-
-<footer>
-  <div class="container">
-    <div class="footer-grid">
-
-      <div>
-        <h3>AI Система</h3>
-        <ul>
-          <li><a href="property-search.html">AI търсачка</a></li>
-          <li><a href="ai-consultant.html">AI консултант</a></li>
-          <li><a href="price-lists.html">Ценови листи</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h3>Информация</h3>
-        <ul>
-          <li><a href="complexes.html">Комплекси</a></li>
-          <li><a href="investors.html">Инвеститори</a></li>
-          <li><a href="areas.html">Райони</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h3>Контакти</h3>
-        <ul>
-          <li><a href="https://newhomebulgaria.com/">NewHomeBulgaria</a></li>
-          <li><a href="contact.html">Контакти</a></li>
-        </ul>
-      </div>
-
-    </div>
-
-    <div class="copyright">© 2026 MaxAssistant</div>
-  </div>
-</footer>
-
-<script>
-let complexes = [];
-let properties = [];
-
-/* Зареждане на базите */
-Promise.all([
-  fetch("data/complexes.json").then(response => response.json()),
-  fetch("data/properties.json").then(response => response.json())
-])
-.then(([complexData, propertyData]) => {
-  complexes = complexData;
-  properties = propertyData;
-})
-.catch(error => {
-  console.error("Грешка при зареждане на базите:", error);
-});
-
-/* Помощни функции */
-function normalizeText(text) {
-  return (text || "").toString().toLowerCase().trim();
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
 }
 
-function includesAny(text, words) {
-  return words.some(word => text.includes(word));
+:root{
+--bg:#050509;
+--card:rgba(255,255,255,.06);
+--card-border:rgba(255,255,255,.12);
+--text:#f5f5f7;
+--muted:#b8b8c8;
+--purple:#9b2cff;
+--purple-soft:#c06cff;
+--accent:#ff4fd8;
 }
 
-function arrayIncludesText(array, text) {
-  if (!array || !Array.isArray(array)) return false;
-  return array.join(" ").toLowerCase().includes(text);
+html{
+scroll-behavior:smooth;
 }
 
-function findComplexKnowledge(property) {
+body{
+font-family:Arial,Helvetica,sans-serif;
+background:
+radial-gradient(circle at top left,rgba(155,44,255,.22),transparent 34%),
+radial-gradient(circle at top right,rgba(255,79,216,.15),transparent 30%),
+linear-gradient(180deg,#050509 0%,#090912 100%);
+color:var(--text);
+line-height:1.6;
+min-height:100vh;
+overflow-x:hidden;
+}
 
-  return complexes.find(item => {
+a{
+color:inherit;
+}
 
-    const complexName = normalizeText(item.name);
-    const propertyComplex = normalizeText(property.complex);
+.container{
+width:100%;
+max-width:1200px;
+margin:0 auto;
+padding:0 22px;
+}
 
-    return (
-      complexName.includes(propertyComplex) ||
-      propertyComplex.includes(complexName)
-    );
+/* HEADER */
 
-  });
+header{
+position:sticky;
+top:0;
+z-index:1000;
+background:rgba(5,5,9,.88);
+backdrop-filter:blur(18px);
+border-bottom:1px solid var(--card-border);
+}
+
+.navbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:24px;
+padding:18px 0;
+}
+
+.logo{
+font-size:30px;
+font-weight:800;
+text-decoration:none;
+letter-spacing:-.5px;
+white-space:nowrap;
+background:linear-gradient(135deg,#fff,var(--purple-soft));
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+nav ul{
+display:flex;
+align-items:center;
+justify-content:flex-end;
+gap:18px;
+list-style:none;
+flex-wrap:wrap;
+}
+
+nav a{
+font-size:14px;
+font-weight:700;
+text-decoration:none;
+color:var(--muted);
+transition:.25s ease;
+white-space:nowrap;
+}
+
+nav a:hover{
+color:#fff;
+text-shadow:0 0 18px rgba(192,108,255,.8);
+}
+
+/* HERO */
+
+.hero{
+padding:90px 0 60px;
+}
+
+.hero-box{
+position:relative;
+overflow:hidden;
+background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+border:1px solid var(--card-border);
+border-radius:32px;
+padding:72px 50px;
+box-shadow:0 30px 90px rgba(0,0,0,.45),0 0 90px rgba(155,44,255,.12);
+text-align:center;
+}
+
+.hero-box:before{
+content:"";
+position:absolute;
+inset:-2px;
+background:
+radial-gradient(circle at 50% 0%,rgba(155,44,255,.35),transparent 38%),
+radial-gradient(circle at 80% 70%,rgba(255,79,216,.18),transparent 35%);
+pointer-events:none;
+}
+
+.hero-box > *{
+position:relative;
+z-index:1;
+}
+
+.hero h1{
+font-size:72px;
+line-height:1.05;
+margin-bottom:24px;
+letter-spacing:-2px;
+background:linear-gradient(135deg,#fff,#d8b8ff 55%,#ff7be5);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+font-size:23px;
+color:var(--muted);
+max-width:850px;
+margin:0 auto 38px;
+}
+
+.button{
+display:inline-block;
+padding:15px 26px;
+border-radius:14px;
+background:linear-gradient(135deg,var(--purple),var(--accent));
+color:#fff;
+font-weight:800;
+text-decoration:none;
+border:0;
+cursor:pointer;
+box-shadow:0 15px 40px rgba(155,44,255,.32);
+transition:.25s ease;
+}
+
+.button:hover{
+transform:translateY(-3px);
+box-shadow:0 20px 60px rgba(155,44,255,.45),0 0 30px rgba(255,79,216,.25);
+}
+
+/* SECTIONS */
+
+.section{
+padding:70px 0;
+}
+
+.section-title{
+font-size:42px;
+line-height:1.15;
+margin-bottom:18px;
+letter-spacing:-1px;
+}
+
+.section-text{
+color:var(--muted);
+font-size:18px;
+max-width:780px;
+margin-bottom:35px;
+}
+
+/* GENERAL CARDS */
+
+.grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:24px;
+}
+
+.card{
+background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
+border:1px solid var(--card-border);
+border-radius:24px;
+padding:28px;
+box-shadow:0 18px 55px rgba(0,0,0,.28);
+transition:.25s ease;
+min-width:0;
+overflow:hidden;
+}
+
+.card:hover{
+transform:translateY(-3px);
+border-color:rgba(192,108,255,.42);
+box-shadow:0 25px 70px rgba(0,0,0,.35),0 0 40px rgba(155,44,255,.13);
+}
+
+.card h3{
+font-size:24px;
+line-height:1.25;
+margin-bottom:18px;
+color:#fff;
+}
+
+.card p{
+color:var(--muted);
+font-size:16px;
+margin-bottom:8px;
+line-height:1.5;
+}
+
+.card strong{
+color:#fff;
+}
+
+/* SEARCH */
+
+.search-grid{
+display:grid;
+grid-template-columns:1fr;
+gap:10px;
+}
+
+input,
+select,
+textarea{
+width:100%;
+padding:15px 16px;
+border-radius:14px;
+border:1px solid var(--card-border);
+background:rgba(255,255,255,.06);
+color:#fff;
+font-size:15px;
+outline:none;
+}
+
+textarea{
+min-height:70px;
+resize:vertical;
+}
+
+input::placeholder,
+textarea::placeholder{
+color:#8f8fa3;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+border-color:rgba(192,108,255,.7);
+box-shadow:0 0 0 4px rgba(155,44,255,.12);
+}
+
+select option{
+background:#10101a;
+color:#fff;
+}
+
+.search-button{
+margin-top:18px;
+}
+
+/* RESULTS */
+
+.results{
+display:grid;
+gap:34px;
+margin-top:46px;
+scroll-margin-top:160px;
+}
+
+.results .card{
+display:grid;
+grid-template-columns:minmax(0,1fr) 330px;
+grid-template-areas:
+"title image"
+"details image"
+"link image"
+"ai ai";
+column-gap:30px;
+row-gap:0;
+align-items:start;
+padding:28px;
+position:relative;
+}
+
+.results .card h3{
+grid-area:title;
+margin:0 0 18px;
+font-size:25px;
+line-height:1.2;
+}
+
+.property-image{
+grid-area:image;
+width:100%;
+height:235px;
+object-fit:cover;
+object-position:center;
+display:block;
+border-radius:22px;
+border:1px solid rgba(255,255,255,.16);
+box-shadow:0 18px 45px rgba(0,0,0,.34),0 0 35px rgba(155,44,255,.12);
+background:rgba(255,255,255,.04);
+}
+
+.results .card > p{
+grid-column:1;
+display:grid;
+grid-template-columns:150px minmax(0,1fr);
+gap:10px;
+align-items:start;
+padding:7px 0;
+margin:0;
+border-bottom:1px solid rgba(255,255,255,.055);
+font-size:15px;
+}
+
+.results .card > p strong{
+font-size:15px;
+color:#fff;
+}
+
+.results .card > p:nth-of-type(15){
+margin-top:12px;
+padding:18px;
+border:1px solid rgba(192,108,255,.35);
+border-radius:18px;
+background:linear-gradient(135deg,rgba(155,44,255,.22),rgba(255,79,216,.10));
+box-shadow:0 12px 35px rgba(155,44,255,.16);
+font-size:24px;
+font-weight:800;
+color:#fff;
+}
+
+.results .card > p:nth-of-type(15) strong{
+font-size:15px;
+color:#d8b8ff;
+}
+
+.results .card > p:nth-of-type(16){
+border-bottom:0;
+color:#d9d6e8;
+}
+
+.results .card > p:nth-last-of-type(2),
+.results .card > p:nth-last-of-type(1){
+font-size:14px;
+color:#9e9eb3;
+}
+
+.property-link{
+grid-area:link;
+width:fit-content;
+margin:18px 0 8px;
+}
+
+.ai-answer{
+grid-column:1 / -1;
+margin-top:20px;
+margin-bottom:0;
+padding:18px;
+border-radius:18px;
+background:rgba(155,44,255,.14);
+border:1px solid rgba(192,108,255,.35);
+}
+
+.ai-answer strong{
+display:block;
+margin-bottom:8px;
+color:#fff;
+}
+
+.ai-answer ul{
+margin-top:10px;
+padding-left:20px;
+}
+
+.ai-answer li{
+margin-bottom:8px;
+color:var(--muted);
+}
+
+.ai-answer p{
+margin-bottom:6px;
+}
+
+.new-search-button{
+margin:20px 0;
+border:0;
+cursor:pointer;
+width:auto;
+}
+
+/* FOOTER */
+
+footer{
+width:100%;
+margin-top:70px;
+padding:58px 0 32px;
+background:rgba(0,0,0,.35);
+border-top:1px solid var(--card-border);
+overflow:hidden;
+}
+
+.footer-grid{
+display:grid;
+grid-template-columns:repeat(3,minmax(0,1fr));
+gap:38px;
+width:100%;
+}
+
+.footer-grid > div{
+min-width:0;
+}
+
+.footer-grid h3{
+font-size:18px;
+margin-bottom:16px;
+color:#fff;
+}
+
+.footer-grid ul{
+list-style:none;
+}
+
+.footer-grid li{
+margin-bottom:10px;
+}
+
+.footer-grid a{
+display:inline-block;
+max-width:100%;
+color:var(--muted);
+text-decoration:none;
+transition:.25s ease;
+word-break:break-word;
+}
+
+.footer-grid a:hover{
+color:#fff;
+}
+
+.copyright{
+margin-top:38px;
+padding-top:20px;
+border-top:1px solid var(--card-border);
+text-align:center;
+color:#8f8fa3;
+font-size:14px;
+}
+
+/* TABLET */
+
+@media(max-width:950px){
+
+.container{
+padding:0 20px;
+}
+
+.navbar{
+flex-direction:column;
+align-items:center;
+gap:16px;
+padding:16px 0;
+}
+
+.logo{
+font-size:28px;
+text-align:center;
+}
+
+nav{
+width:100%;
+}
+
+nav ul{
+justify-content:center;
+gap:12px;
+}
+
+nav a{
+font-size:13px;
+}
+
+.hero{
+padding:55px 0 38px;
+}
+
+.hero-box{
+padding:46px 26px;
+border-radius:26px;
+}
+
+.hero h1{
+font-size:46px;
+}
+
+.hero p{
+font-size:18px;
+}
+
+.grid{
+grid-template-columns:1fr;
+gap:18px;
+}
+
+.footer-grid{
+grid-template-columns:1fr;
+gap:28px;
+}
+
+footer{
+margin-top:55px;
+padding:45px 0 28px;
+}
+
+.results .card{
+grid-template-columns:minmax(0,1fr) 280px;
+column-gap:22px;
+}
+
+.property-image{
+height:215px;
+}
 
 }
 
-/* Основно търсене */
-document.getElementById("searchButton").addEventListener("click", function () {
-  const location = normalizeText(document.getElementById("location").value);
-  const propertyType = normalizeText(document.getElementById("propertyType").value);
-  const rooms = Number(document.getElementById("rooms").value || 0);
-  const budget = Number(document.getElementById("budget").value || 0);
-  const minArea = Number(document.getElementById("minArea").value || 0);
-  const constructionStage = normalizeText(document.getElementById("constructionStage").value);
-  const beachLine = normalizeText(document.getElementById("beachLine").value);
-  const maintenance = normalizeText(document.getElementById("maintenance").value);
-  const freeText = normalizeText(document.getElementById("freeText").value);
-  const freeWords = freeText.split(/\s+/).filter(word => word.length > 2);
+/* MOBILE */
 
-  const results = properties.map(property => {
-    let score = 0;
-    let reasons = [];
-    let aiAnswer = [];
+@media(max-width:520px){
 
-    const complexInfo = findComplexKnowledge(property);
-    const propertyText = normalizeText(JSON.stringify(property));
-    const complexText = normalizeText(JSON.stringify(complexInfo || {}));
-    const allText = propertyText + " " + complexText;
-
-    /* Основни филтри */
-   if (location) {
-
-  if (
-    !normalizeText(property.location).includes(location)
-  ) {
-    return null;
-  }
-
-  score += 35;
-
-  reasons.push(
-    "съвпада с избраната локация"
-  );
-
+.container{
+padding:0 16px;
 }
 
-   if (propertyType) {
-
-  if (!normalizeText(property.property_type).includes(propertyType)) {
-    return null;
-  }
-
-  score += 30;
-
-  reasons.push(
-    "отговаря на избрания тип имот"
-  );
-
+.navbar{
+align-items:center;
+gap:14px;
+padding:14px 0;
 }
 
-    if (rooms) {
-
-  if (Number(property.rooms) !== rooms) {
-    return null;
-  }
-
-  score += 25;
-
-  reasons.push(
-    "отговаря на избрания брой стаи"
-  );
-
+.logo{
+font-size:30px;
 }
 
-    if (budget && Number(property.price) <= budget) {
-      score += 35;
-      reasons.push("влиза в зададения бюджет");
-    }
-
-  if (budget && Number(property.price) > budget) {
-  return null;
+nav ul{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:9px 12px;
 }
 
-    if (minArea && Number(property.area) >= minArea) {
-      score += 20;
-      reasons.push("отговаря на минималната площ");
-    }
-
-    if (constructionStage && normalizeText(property.construction_stage).includes(constructionStage)) {
-      score += 15;
-      reasons.push("съвпада с етапа на строителство");
-    }
-
-    if (beachLine && normalizeText(property.beach_line).includes(beachLine)) {
-      score += 15;
-      reasons.push("отговаря на избраната линия до плаж");
-    }
-
-    if (maintenance && normalizeText(String(property.maintenance_fee_level || property.maintenance_fee)).includes(maintenance)) {
-      score += 10;
-      reasons.push("отговаря на търсената такса поддръжка");
-    }
-
-    /* Свободни въпроси */
-    if (includesAny(freeText, ["целогодишно", "постоянно живеене", "зимата", "живеене целогодишно"])) {
-  if (property.year_round === true || (complexInfo && complexInfo.year_round === true)) {
-    score += 22;
-    reasons.push("подходящо е за целогодишно ползване или по-дълъг сезон");
-    aiAnswer.push("По въпроса за целогодишно ползване: този имот или комплекс е отбелязан като по-подходящ за целогодишно живеене.");
-  } else {
-    aiAnswer.push("Важно: този имот или комплекс не е отбелязан като оптимален за целогодишно живеене. По-скоро е подходящ за сезонно ползване, почивка или летни наеми.");
-  }
-}
-    if (includesAny(freeText, ["инфраструктура", "магазини", "автобус", "транспорт", "училище", "детска градина", "болница", "аптека"])) {
-  if (complexInfo && complexInfo.infrastructure) {
-    score += 18;
-    reasons.push("има налична информация за инфраструктурата около комплекса");
-    aiAnswer.push("По отношение на инфраструктурата: " + complexInfo.infrastructure);
-  } else if (property.infrastructure) {
-    score += 14;
-    reasons.push("има информация за инфраструктурата около имота");
-    aiAnswer.push("По отношение на инфраструктурата: " + property.infrastructure);
-  } else {
-    aiAnswer.push("За инфраструктурата около този имот няма достатъчно въведена информация и е добре да се провери допълнително.");
-  }
-}
-    if (includesAny(freeText, ["тихо", "спокойно", "тишина", "шумно", "нощен живот", "дискотеки", "парти"])) {
-
-  if (complexInfo && complexInfo.environment) {
-
-    const env = Array.isArray(complexInfo.environment)
-  ? complexInfo.environment.join(" ").toLowerCase()
-  : String(complexInfo.environment).toLowerCase();
-
-    if (
-      includesAny(freeText, ["тихо", "спокойно", "тишина"]) &&
-      includesAny(env, ["тихо", "спокойно", "зеленина", "природа"])
-    ) {
-      score += 20;
-      reasons.push("подходящо за хора търсещи спокойствие");
-      aiAnswer.push("Районът и средата около комплекса са по-спокойни и подходящи за почивка или по-тих начин на живот.");
-    }
-
-    if (
-      includesAny(freeText, ["шумно", "нощен живот", "дискотеки", "парти"]) &&
-      includesAny(env, ["нощен живот", "център", "заведения", "активен"])
-    ) {
-      score += 20;
-      reasons.push("подходящо за активен район и нощен живот");
-      aiAnswer.push("Този район е по-активен и е близо до заведения, развлечения или нощен живот.");
-    }
-
-  }
-
-}
-    if (includesAny(freeText, ["инвестиция", "доходност", "наем", "отдаване", "booking", "airbnb", "сезонни наеми", "краткосрочен наем"])) {
-
-  if (complexInfo && complexInfo.rental_potential) {
-    score += 22;
-    reasons.push("има добър потенциал за отдаване под наем");
-    aiAnswer.push("Като инвестиция и отдаване под наем: " + complexInfo.rental_potential);
-  } else if (property.rental_potential) {
-    score += 18;
-    reasons.push("имотът има описан потенциал за наем");
-    aiAnswer.push("Като инвестиция и отдаване под наем: " + property.rental_potential);
-  } else {
-    aiAnswer.push("За потенциала за отдаване под наем няма достатъчно въведена информация и трябва да се оцени според локацията, сезона и типа имот.");
-  }
-
-}
-    if (includesAny(freeText, ["разсрочване", "разсрочено", "вноски", "плащане на вноски", "гъвкаво плащане", "схема на плащане"])) {
-
-  if (property.installment === true || (complexInfo && complexInfo.installment === true)) {
-    score += 20;
-    reasons.push("има възможност за разсрочено плащане");
-    aiAnswer.push("За този имот или комплекс има отбелязана възможност за разсрочено плащане.");
-  } else {
-    aiAnswer.push("Не е отбелязана възможност за разсрочено плащане. Това трябва да се провери допълнително според конкретния имот и продавач.");
-  }
-
-}
-    if (includesAny(freeText, ["акт 16", "act 16", "готов имот", "завършен", "строеж", "в строеж", "на зелено"])) {
-
-  if (property.act16 === true || (complexInfo && complexInfo.act16 === true)) {
-    score += 20;
-    reasons.push("имотът или комплексът е с Акт 16");
-    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като завършен и с Акт 16.");
-  } else if (property.under_construction === true || (complexInfo && complexInfo.under_construction === true)) {
-    score += 15;
-    reasons.push("имотът или комплексът е в строеж");
-    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като строящ се.");
-  } else {
-    aiAnswer.push("За статута на строителство или Акт 16 няма достатъчно въведена информация и трябва да се провери допълнително.");
-  }
-
-}
-    if (includesAny(freeText, ["море", "морска гледка", "гледка към морето", "първа линия", "близо до плажа", "плаж"])) {
-
-  if (property.sea_view === true) {
-    score += 25;
-    reasons.push("имотът има морска гледка");
-    aiAnswer.push("Този имот е отбелязан като имот с морска гледка.");
-  }
-
-  if (property.first_line === true || (complexInfo && complexInfo.first_line === true)) {
-    score += 25;
-    reasons.push("имотът или комплексът е близо до морето");
-    aiAnswer.push("Имотът или комплексът е отбелязан като първа линия или много близо до плажа.");
-  }
-
-  if (complexInfo && complexInfo.beach_distance) {
-    score += 12;
-    aiAnswer.push("Разстояние до плажа: " + complexInfo.beach_distance);
-  }
-
+nav a{
+font-size:14px;
+padding:3px 0;
 }
 
-    if (includesAny(freeText, ["обзавед", "мебел", "готов", "до ключ", "издава"])) {
-      score += 10;
-      aiAnswer.push(
-        "Издаване / обзавеждане: " +
-        (property.completion_status || property.finish_stage || (complexInfo && complexInfo.finish_stage) || "проверява се според конкретния имот.")
-      );
-    }
-
-    if (includesAny(freeText, ["зеленина", "природа", "спокойствие", "тишина"])) {
-      if (complexInfo && (arrayIncludesText(complexInfo.environment_profile, "зеленина") || arrayIncludesText(complexInfo.tags, "озеленен"))) {
-        score += 20;
-        reasons.push("комплексът има повече зеленина и resort атмосфера");
-      }
-    }
-
-    freeWords.forEach(word => {
-      if (allText.includes(word)) {
-        score += 4;
-      }
-    });
-
-    return {
-      ...property,
-      score,
-      reasons,
-      aiAnswer,
-      complexInfo
-    };
-  })
-  .filter(item => item && item.score > 0)
-  .sort((a, b) => {
-
-  if (b.score !== a.score) {
-    return b.score - a.score;
-  }
-
-  const budget = Number(
-    document.getElementById("budget").value || 0
-  );
-
-  if (budget) {
-
-    const diffA = Math.abs(budget - a.price);
-    const diffB = Math.abs(budget - b.price);
-
-    if (diffA !== diffB) {
-      return diffA - diffB;
-    }
-
-  }
-
-  return b.area - a.area;
-
-});
-
-  renderResults(results);
-
-setTimeout(() => {
-  const resultsBox = document.getElementById("results");
-  const firstResult = resultsBox.querySelector(".card");
-
-  if (!firstResult) return;
-
-  const headerOffset = 80;
-  const top = firstResult.getBoundingClientRect().top + window.pageYOffset - headerOffset;
-
-  window.scrollTo({
-    top: top,
-    behavior: "smooth"
-  });
-}, 150);
-
-});
-
-/* Показване */
-function renderResults(results) {
-  const resultsBox = document.getElementById("results");
-
-  if (!results.length) {
-    resultsBox.innerHTML = `
-      <div class="card">
-        <h3>Няма точен резултат</h3>
-        <p>
-          Това не означава, че няма подходящ имот. Базата с апартаменти и ценови листи тепърва ще се разширява.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
- resultsBox.innerHTML = results.map(item => `
-    <div class="card">
-    ${item.image ? `
-  <img src="${item.image}" alt="${item.complex}" class="property-image">
-` : ""}
-
-      ${item.price ? `
-        <div class="property-price-hero">
-          ${Number(item.price).toLocaleString()} €
-        </div>
-      ` : ""}
-
-      <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
-
-      ${item.aiAnswer && item.aiAnswer.length ? `
-        <div class="ai-answer">
-          <strong>Отговор според зададения въпрос:</strong>
-          <ul>
-            ${item.aiAnswer.map(answer => `<li>${answer}</li>`).join("")}
-          </ul>
-        </div>
-      ` : ""}
-
-      <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
-      <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
-      <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
-      <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
-      <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
-      <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
-
-<p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
-
-<p><strong>Балкони:</strong> ${item.balconies || "Няма данни"}</p>
-
-<p><strong>Склад:</strong> ${item.storage_room ? "Да" : "Не"}</p>
-
-<p><strong>Гардеробна:</strong> ${item.walk_in_closet ? "Да" : "Не"}</p>
-
-<p><strong>Мазе:</strong> ${item.basement ? "Да" : "Не"}</p>
-
-<p><strong>Гледка:</strong> ${item.view || "Няма данни"}</p>
-
-<p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
-      <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
-      <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
-      <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
-      <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
-      <p><strong>Линия до плаж:</strong> ${item.beach_line || "Няма данни"}</p>
-      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
-      <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
-      <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
-      ${item.url ? `
-  <a href="${item.url}" target="_blank" class="button property-link">
-    Виж обявата
-  </a>
-` : ""}
-      ${item.complexInfo && item.complexInfo.infrastructure ? `
-  <div class="ai-answer">
-    <strong>Инфраструктура в комплекса:</strong>
-    <ul>
-      ${item.complexInfo.infrastructure.map(infra => `<li>${infra}</li>`).join("")}
-    </ul>
-  </div>
-` : ""}
-
-      ${item.reasons && item.reasons.length ? `
-        <div class="ai-answer">
-          <strong>Защо MaxAssistant показва този имот:</strong>
-          <ul>
-            ${item.reasons.map(reason => `<li>${reason}</li>`).join("")}
-          </ul>
-        </div>
-      ` : ""}
-
-      ${item.complexInfo ? `
-        <div class="ai-answer">
-          <strong>AI контекст за комплекса:</strong>
-          <p>${item.complexInfo.name} – ${item.complexInfo.location}${item.complexInfo.area ? ", " + item.complexInfo.area : ""}</p>
-          <p>${item.complexInfo.strengths ? item.complexInfo.strengths.join(", ") : ""}</p>
-        </div>
-      ` : ""}
-    </div>
-    `).join("") + `
-  <button class="button new-search-button" onclick="scrollToSearch()">
-    Ново търсене
-  </button>
-`;
+.hero{
+padding:34px 0 26px;
 }
 
-function scrollToSearch() {
+.hero-box{
+padding:30px 18px;
+border-radius:22px;
+}
 
-  const searchBox = document.querySelector(".search-grid");
+.hero h1{
+font-size:36px;
+letter-spacing:-1px;
+}
 
-  searchBox.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
+.hero p{
+font-size:16px;
+margin-bottom:26px;
+}
 
-  setTimeout(() => {
+.button{
+width:100%;
+text-align:center;
+padding:15px 20px;
+}
 
-    const firstField = document.getElementById("location");
+.section{
+padding:44px 0;
+}
 
-    if (firstField) {
-      firstField.focus();
-    }
+.section-title{
+font-size:30px;
+}
 
-  }, 500);
+.section-text{
+font-size:16px;
+margin-bottom:24px;
+}
+
+.card{
+padding:22px;
+border-radius:20px;
+}
+
+.card h3{
+font-size:21px;
+}
+
+.card p{
+font-size:16px;
+margin-bottom:9px;
+line-height:1.48;
+}
+
+.results{
+gap:32px;
+margin-top:40px;
+}
+
+.results .card{
+display:block;
+padding:0;
+border-radius:22px;
+}
+
+.results .card h3,
+.results .card > p,
+.results .card .ai-answer,
+.results .card .property-link{
+margin-left:20px;
+margin-right:20px;
+}
+
+.results .card h3{
+margin-top:22px;
+font-size:22px;
+}
+
+.property-image{
+width:100%;
+height:220px;
+border-radius:22px 22px 0 0;
+border:0;
+box-shadow:none;
+}
+
+.results .card > p{
+display:block;
+padding:0;
+margin-bottom:9px;
+border-bottom:0;
+font-size:16px;
+}
+
+.results .card > p:nth-of-type(15){
+margin-top:14px;
+padding:16px;
+font-size:23px;
+}
+
+.ai-answer{
+padding:16px;
+border-radius:16px;
+}
+
+.property-link{
+display:block;
+margin-top:16px;
+margin-bottom:20px;
+}
+
+.new-search-button{
+width:100%;
+}
+
+footer{
+margin-top:42px;
+padding:36px 0 24px;
+}
+
+.footer-grid{
+display:flex;
+flex-direction:column;
+gap:26px;
+}
+
+.footer-grid h3{
+font-size:17px;
+margin-bottom:10px;
+}
+
+.footer-grid li{
+margin-bottom:8px;
+}
+
+.footer-grid a{
+font-size:15px;
+line-height:1.45;
+}
+
+.copyright{
+margin-top:26px;
+padding-top:16px;
+font-size:13px;
+}
 
 }
-</script>
-
-</body>
-</html>
