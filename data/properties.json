@@ -28,7 +28,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 2,
