@@ -61,7 +61,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 3,
@@ -92,7 +94,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 4,
@@ -123,7 +127,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 5,
@@ -154,7 +160,9 @@
     "parking": false,
     "furnished": true,
     "investor": "Cascadas",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/IMG_20260502_113940-450x330.jpg",
+"url": "https://newhomebulgaria.com/kaskadas-slanchev-bryag/"
   },
   {
     "id": 6,
@@ -185,7 +193,9 @@
     "parking": false,
     "furnished": true,
     "investor": "Green Life",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2025/05/GLBR_IMG_9241-450x330.jpg",
+"url": "https://newhomebulgaria.com/green-life-beach-resort-sozopol/"
   },
   {
     "id": 7,
@@ -216,7 +226,9 @@
     "parking": false,
     "furnished": true,
     "investor": "Green Life",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2025/05/GLBR_IMG_9241-450x330.jpg",
+"url": "https://newhomebulgaria.com/green-life-beach-resort-sozopol/"
   },
   {
     "id": 8,
@@ -247,7 +259,9 @@
     "parking": false,
     "furnished": true,
     "investor": "Green Life",
-    "source": "NewHomeBulgaria"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2025/05/GLBR_IMG_9241-450x330.jpg",
+"url": "https://newhomebulgaria.com/green-life-beach-resort-sozopol/"
   },
   {
     "id": 9,
@@ -278,7 +292,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "City Residence Price List"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 10,
@@ -309,7 +325,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "City Residence Price List"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
   {
     "id": 11,
@@ -340,7 +358,9 @@
     "parking": true,
     "furnished": false,
     "investor": "City Residence",
-    "source": "City Residence Price List"
+    "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/03/top_left_visualization-450x330.png",
+"url": "https://newhomebulgaria.com/city-residence-slanchev-bryag/"
   },
 {
   "id": 12,
@@ -371,7 +391,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Casa Blanca",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/casablanca-2-image-1-450x330.jpg",
+"url": "https://newhomebulgaria.com/kasa-blanka-chernomorets/"
 },
 {
   "id": 13,
@@ -402,7 +424,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Casa Blanca",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/casablanca-2-image-1-450x330.jpg",
+"url": "https://newhomebulgaria.com/kasa-blanka-chernomorets/"
 },
 {
   "id": 14,
@@ -433,7 +457,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Casa Blanca",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/casablanca-2-image-1-450x330.jpg",
+"url": "https://newhomebulgaria.com/kasa-blanka-chernomorets/"
 },
 {
   "id": 15,
@@ -464,7 +490,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Casa Blanca",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/casablanca-2-image-1-450x330.jpg",
+"url": "https://newhomebulgaria.com/kasa-blanka-chernomorets/"
 },
 {
   "id": 16,
@@ -495,7 +523,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Casa Blanca",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/casablanca-2-image-1-450x330.jpg",
+"url": "https://newhomebulgaria.com/kasa-blanka-chernomorets/"
 },
 {
   "id": 17,
@@ -526,7 +556,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Vista Verde",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/mainpic-450x330.png",
+"url": "https://newhomebulgaria.com/vista-verde-burgas/"
 },
 {
   "id": 18,
@@ -557,7 +589,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Vista Verde",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/mainpic-450x330.png",
+"url": "https://newhomebulgaria.com/vista-verde-burgas/"
 },
 {
   "id": 19,
@@ -588,7 +622,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Vista Verde",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/mainpic-450x330.png",
+"url": "https://newhomebulgaria.com/vista-verde-burgas/"
 },
 {
   "id": 20,
@@ -619,7 +655,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Vista Verde",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/mainpic-450x330.png",
+"url": "https://newhomebulgaria.com/vista-verde-burgas/"
 },
 {
   "id": 21,
@@ -650,7 +688,9 @@
   "parking": true,
   "furnished": false,
   "investor": "Vista Verde",
-  "source": "NewHomeBulgaria"
+  "source": "NewHomeBulgaria",
+"image": "https://newhomebulgaria.com/wp-content/uploads/2026/05/mainpic-450x330.png",
+"url": "https://newhomebulgaria.com/vista-verde-burgas/"
 }
 ]
 
