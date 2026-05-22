@@ -536,6 +536,11 @@ function renderResults(results) {
       <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
       <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
       <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
+      ${item.url ? `
+  <a href="${item.url}" target="_blank" class="button property-link">
+    Виж обявата
+  </a>
+` : ""}
       ${item.complexInfo && item.complexInfo.infrastructure ? `
   <div class="ai-answer">
     <strong>Инфраструктура в комплекса:</strong>
