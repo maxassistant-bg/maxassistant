@@ -151,19 +151,30 @@ module.exports = async function handler(req, res) {
 
     let finalResults = [];
 
-    // Strict priority: first NewHome. Only if no good NewHome results,
-    // then continue source by source in the trusted order.
+    // Priority order is preserved:
+    // 1. NewHome
+    // 2. trusted portals
+    // 3. trusted developer sites
+    // But if NewHome has only 1-2 results, we continue with the next sources
+    // until we collect enough high-quality matches.
     for (const source of enabledSources) {
       const sourceResults = await searchSource(source, q, detectedLocations);
 
-      if (sourceResults.length) {
-        finalResults = sourceResults;
+      finalResults.push(...sourceResults);
+
+      if (finalResults.length >= 5) {
         break;
       }
     }
 
     const results = finalResults
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => {
+        if (b.source_priority !== a.source_priority) {
+          return b.source_priority - a.source_priority;
+        }
+
+        return b.score - a.score;
+      })
       .slice(0, 5);
 
     return res.status(200).json({
@@ -278,7 +289,7 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
 
   const title = extractTitle(html) || cleanTitleFromUrl(url);
   const description = extractMeta(html, "description");
-  const image = extractImage(html);
+  const image = extractImage(html, url);
   const clean = stripHtml(html).slice(0, 9000);
   const tableText = extractTableText(html);
 
@@ -334,11 +345,62 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
     source: source.name,
     source_domain: source.domain,
     source_type: source.type,
+    source_priority: source.priority,
     type: tableText ? "external_page_with_table" : "external_page",
     has_table: Boolean(tableText),
     real_property_match: true,
+    match_reason: buildMatchReason({
+      source,
+      detectedLocations,
+      hasTable: Boolean(tableText),
+      image,
+      title,
+      description,
+      clean,
+      tokens
+    }),
     score: Math.round(score * 10) / 10
   };
+}
+
+function buildMatchReason({ source, detectedLocations, hasTable, image, title, description, clean, tokens }) {
+  const reasons = [];
+
+  if (source.type === "trusted_core") {
+    reasons.push("резултатът е от NewHome Bulgaria, който е основният доверен източник");
+  } else if (source.type === "trusted_portal") {
+    reasons.push("резултатът е от доверен външен портал");
+  } else if (source.type === "trusted_developer") {
+    reasons.push("резултатът е от доверен сайт на инвеститор");
+  }
+
+  if (detectedLocations.length) {
+    reasons.push("съвпада със зададената локация: " + detectedLocations.map(item => item.canonical).join(", "));
+  }
+
+  if (hasTable) {
+    reasons.push("страницата съдържа таблица или структурирана информация за имоти");
+  }
+
+  const combined = normalize(title + " " + description + " " + clean);
+
+  if (/€|евро/i.test(combined)) {
+    reasons.push("има данни за цена");
+  }
+
+  if (/кв\.?м|кв м|m2|площ/i.test(combined)) {
+    reasons.push("има данни за площ");
+  }
+
+  if (/апартамент|студио|спалн/i.test(combined)) {
+    reasons.push("съдържа имотни ключови думи");
+  }
+
+  if (image) {
+    reasons.push("има открита снимка");
+  }
+
+  return reasons.slice(0, 4).join("; ");
 }
 
 function isRealPropertyResult({ title, description, url, clean, tableText, score, tokens, detectedLocations }) {
@@ -519,11 +581,52 @@ function extractMeta(html, name) {
   return "";
 }
 
-function extractImage(html) {
-  const image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
+function extractImage(html, pageUrl = "") {
+  let image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
+
+  if (!image) {
+    image = extractFirstContentImage(html, pageUrl);
+  }
+
   if (!image) return "";
-  if (/placeholder|blank|default|logo/i.test(image)) return "";
+  if (/placeholder|blank|default|logo|sprite|icon/i.test(image)) return "";
   return image;
+}
+
+function extractFirstContentImage(html, pageUrl = "") {
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  let match;
+
+  while ((match = imgRegex.exec(html)) !== null) {
+    const src = match[1];
+    const absolute = toAbsoluteUrl(src, pageUrl);
+
+    if (!absolute) continue;
+
+    const lower = absolute.toLowerCase();
+
+    if (
+      lower.includes("logo") ||
+      lower.includes("icon") ||
+      lower.includes("sprite") ||
+      lower.includes("placeholder") ||
+      lower.includes("blank") ||
+      lower.includes("avatar")
+    ) {
+      continue;
+    }
+
+    if (
+      lower.endsWith(".jpg") ||
+      lower.endsWith(".jpeg") ||
+      lower.endsWith(".png") ||
+      lower.endsWith(".webp")
+    ) {
+      return absolute;
+    }
+  }
+
+  return "";
 }
 
 function scoreText(text, tokens) {
