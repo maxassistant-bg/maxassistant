@@ -167,6 +167,31 @@
   }
 }
 
+
+.external-decision-card {
+  margin-top: 28px;
+  background: linear-gradient(135deg, rgba(255,255,255,.065), rgba(255,255,255,.030));
+  border: 1px solid rgba(255,255,255,.11);
+}
+
+.external-decision-label {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #d8b8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.external-decision-card h3 {
+  margin-bottom: 10px;
+}
+
+.external-decision-card p {
+  max-width: 820px;
+}
+
 </style>
 
 </head>
@@ -708,6 +733,72 @@ document.getElementById("searchButton").addEventListener("click", function () {
 });
 
 
+
+function analyzeExternalDiscoveryNeed(localResults) {
+  if (!localResults || !localResults.length) {
+    return {
+      shouldSearch: true,
+      mode: "aggressive",
+      title: "Външният discovery layer ще бъде проверен",
+      message: "MaxAssistant не намери достатъчно силно локално съвпадение в NewHome базата. Затова ще провери и одобрените външни източници за допълнителни възможности."
+    };
+  }
+
+  const bestScore = Number(localResults[0].score || 0);
+  const strongMatches = localResults.filter(item => Number(item.score || 0) >= bestScore - 15).length;
+
+  if (bestScore >= 110 && strongMatches >= 2) {
+    return {
+      shouldSearch: false,
+      mode: "local_strong",
+      title: "Локалната база дава достатъчно силни резултати",
+      message: "MaxAssistant намери силни съвпадения в NewHome базата. Външният слой не се стартира автоматично, за да не се смесват проверени оферти с по-слабо контролирани външни резултати."
+    };
+  }
+
+  if (bestScore >= 70) {
+    return {
+      shouldSearch: true,
+      mode: "secondary",
+      title: "Външният слой се проверява като допълнение",
+      message: "Има локално съвпадение, но MaxAssistant ще провери и одобрените външни източници като вторичен discovery layer. NewHome резултатите остават с най-висок приоритет."
+    };
+  }
+
+  return {
+    shouldSearch: true,
+    mode: "fallback",
+    title: "Външният слой се проверява като fallback",
+    message: "Локалното съвпадение не е достатъчно силно. MaxAssistant ще потърси допълнителни възможности в одобрените външни източници."
+  };
+}
+
+function renderExternalDecision(decision) {
+  const externalBox = document.getElementById("externalResults");
+  if (!externalBox) return;
+
+  externalBox.innerHTML = `
+    <div class="card external-decision-card">
+      <span class="external-decision-label">External discovery control</span>
+      <h3>${decision.title}</h3>
+      <p>${decision.message}</p>
+    </div>
+  `;
+}
+
+function handleExternalDiscovery(localResults, externalQuery) {
+  const decision = analyzeExternalDiscoveryNeed(localResults);
+
+  renderExternalDecision(decision);
+
+  if (!decision.shouldSearch) {
+    return;
+  }
+
+  searchExternalSources(externalQuery, decision);
+}
+
+
 /* Външно търсене */
 function buildExternalSearchQuery(filters) {
   const parts = [];
@@ -725,7 +816,7 @@ function buildExternalSearchQuery(filters) {
   return parts.join(" ").trim();
 }
 
-async function searchExternalSources(query) {
+async function searchExternalSources(query, decision = null) {
   const externalBox = document.getElementById("externalResults");
 
   if (!externalBox) return;
@@ -737,8 +828,9 @@ async function searchExternalSources(query) {
 
   externalBox.innerHTML = `
     <div class="card external-search-card">
-      <h3>Търсене във външни източници...</h3>
-      <p>MaxAssistant проверява NewHomeBulgaria за допълнителни резултати.</p>
+      <span class="external-decision-label">External discovery layer</span>
+      <h3>Проверка в одобрените външни източници...</h3>
+      <p>${decision ? decision.message : "MaxAssistant проверява външните източници като допълнителен discovery layer."}</p>
     </div>
   `;
 
@@ -749,8 +841,9 @@ async function searchExternalSources(query) {
     if (!data.ok || !data.results || !data.results.length) {
       externalBox.innerHTML = `
         <div class="card external-search-card">
-          <h3>Няма външни резултати</h3>
-          <p>В момента не са намерени допълнителни резултати във външните източници.</p>
+          <span class="external-decision-label">External discovery layer</span>
+          <h3>Няма надеждни външни резултати</h3>
+          <p>MaxAssistant провери външния слой, но не намери достатъчно надеждни допълнителни възможности. Локалните резултати от NewHome остават водещи.</p>
         </div>
       `;
       return;
@@ -760,10 +853,11 @@ async function searchExternalSources(query) {
 
     externalBox.innerHTML = `
       <div class="card external-search-card">
-        <h3>Допълнителни резултати от външни сайтове</h3>
+        <span class="external-decision-label">External opportunities</span>
+        <h3>Допълнителни възможности от външни източници</h3>
         <p>
-          MaxAssistant провери позволените външни източници и намери още възможни страници,
-          които може да са свързани с търсенето.
+          Това са вторични discovery резултати от одобрените външни източници.
+          Те не изместват NewHome базата, а служат като допълнителен пазарен ориентир.
         </p>
 
         <div class="external-results-grid">
@@ -806,8 +900,9 @@ async function searchExternalSources(query) {
 
     externalBox.innerHTML = `
       <div class="card external-search-card">
+        <span class="external-decision-label">External discovery layer</span>
         <h3>Външното търсене временно не е достъпно</h3>
-        <p>Локалната AI търсачка работи нормално. Външният слой ще бъде проверен отново по-късно.</p>
+        <p>Локалната AI търсачка работи нормално. MaxAssistant запази резултатите от NewHome базата и ще може да провери външния слой отново по-късно.</p>
       </div>
     `;
   }
