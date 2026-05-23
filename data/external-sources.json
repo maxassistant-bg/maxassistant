@@ -1,1 +1,33 @@
+[
+  {
+    "name": "NewHome Bulgaria",
+    "url": "https://newhomebulgaria.com",
+    "type": "agency",
+    "priority": 100,
+    "enabled": true
+  },
 
+  {
+    "name": "Vista Verde",
+    "url": "https://www.lavistaverde.eu",
+    "type": "developer",
+    "priority": 80,
+    "enabled": true
+  },
+
+  {
+    "name": "Green Life",
+    "url": "https://greenlife.bg",
+    "type": "developer",
+    "priority": 80,
+    "enabled": true
+  },
+
+  {
+    "name": "Dinevi Group",
+    "url": "https://dinevigroup.bg",
+    "type": "developer",
+    "priority": 80,
+    "enabled": true
+  }
+]
