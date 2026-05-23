@@ -968,3 +968,18 @@ text-align:center;
 }
 
 }
+
+
+.external-match-reason{
+margin-top:10px;
+padding:10px 12px;
+border-radius:12px;
+background:rgba(155,44,255,.12);
+border:1px solid rgba(192,108,255,.22);
+font-size:14px;
+line-height:1.45;
+}
+
+.external-match-reason strong{
+color:#fff;
+}
