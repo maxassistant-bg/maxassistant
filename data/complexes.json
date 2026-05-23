@@ -1,49 +1,32 @@
 [
   {
     "id": "green-life-sozopol",
-
     "name": "Green Life Beach Resort Sozopol",
-
     "location": "Созопол",
-
     "area": "Каваци",
-
     "type": "ваканционен комплекс",
-
     "source_priority": {
       "newhomebulgaria": 100,
       "investor": 70,
       "external": 40
     },
-
     "year_round": false,
-
     "act16_status": "частично",
-
     "act16_note": "Повечето части на комплекса имат Акт 16. Някои нови сгради и ново строителство все още са в процес.",
-
     "installment_plan": false,
-
     "installment_note": "При препродажби обикновено няма стандартно разсрочване от инвеститор.",
-
     "finish_stage": "обзаведени и готови за ползване апартаменти",
-
     "parking": "зависи от конкретната зона и условията",
-
     "completion_status": "завършен комплекс",
-
     "developer_payment_years": 0,
-
     "good_for": [
       "почивка",
       "инвестиция",
       "отдаване под наем"
     ],
-
     "not_good_for": [
       "целогодишно живеене"
     ],
-
     "tags": [
       "близо до плаж",
       "силен летен наем",
@@ -55,93 +38,80 @@
       "ликвиден",
       "познат комплекс"
     ],
-
     "beach_distance": "много близо",
-
     "maintenance_fee_level": "висока",
-
     "noise_level": "средно",
-
     "rental_potential": "висок",
-
     "strengths": [
       "голяма озеленена територия",
       "близо до плаж Каваци",
       "силен летен наем",
       "добра ликвидност"
     ],
-
     "weaknesses": [
       "не е най-добрият избор за целогодишно живеене",
       "висока такса поддръжка",
       "някои части са шумни през сезона"
     ],
-
     "ai_recommendation_rules": [
       {
         "if": "vacation",
         "message": "Подходящ избор за сезонно ползване близо до плажа."
       },
-
       {
         "if": "rental",
         "message": "Комплексът има добър потенциал за летни наеми."
       },
-
       {
         "if": "year_round",
         "message": "Системата трябва да предупреди, че комплексът не е оптимален за постоянно живеене."
       }
     ],
-
     "zones": [
       {
         "name": "Park Side",
         "description": "По-спокойна зона."
       },
-
       {
         "name": "First Line",
         "description": "По-престижна зона близо до морето."
       }
+    ],
+    "beach_distance_meters": 120,
+    "beach_proximity_score": 10,
+    "quiet_score": 7,
+    "family_score": 9,
+    "investment_score": 8,
+    "nature_score": 10,
+    "urban_score": 4,
+    "year_round_score": 3,
+    "atmosphere": [
+      "зелена resort среда",
+      "силно ваканционно усещане",
+      "спокойствие извън активния сезон",
+      "летен начин на живот"
     ]
-  }
-,
+  },
   {
     "id": "cascadas-sunny-beach",
-
     "name": "Cascadas Family Resort",
-
     "location": "Слънчев бряг",
-
     "area": "централна зона",
-
     "type": "ваканционен комплекс",
-
     "source_priority": {
       "newhomebulgaria": 100,
       "investor": 70,
       "external": 40
     },
-
     "year_round": true,
-
     "act16_status": "да",
-
     "act16_note": "Комплексът е завършен и функциониращ.",
-
     "installment_plan": false,
-
     "installment_note": "При препродажби условията зависят от конкретния собственик.",
-
     "finish_stage": "различни варианти според конкретния апартамент",
-
     "parking": "ограничено в активния сезон",
-
     "completion_status": "завършен комплекс",
-
     "developer_payment_years": 0,
-
     "good_for": [
       "почивка",
       "инвестиция",
@@ -149,11 +119,9 @@
       "по-дълъг сезон",
       "частично целогодишно ползване"
     ],
-
     "not_good_for": [
       "тишина сред природа"
     ],
-
     "tags": [
       "градски комплекс",
       "инфраструктура",
@@ -163,281 +131,247 @@
       "семеен",
       "функционален"
     ],
-
     "environment_profile": [
       "градска среда",
       "активен район",
       "повече инфраструктура",
       "вътре в Слънчев бряг"
     ],
-
     "beach_distance": "средно",
-
     "maintenance_fee_level": "средна",
-
     "noise_level": "средно към високо",
-
     "rental_potential": "висок",
-
     "rental_profile": {
       "summer_rentals": "силен",
       "year_round_rentals": "по-силен от типичен сезонен комплекс",
       "vacation_experience": "urban resort",
       "tourist_demand": "високо"
     },
-
     "strengths": [
       "силна инфраструктура",
       "много удобства",
       "по-дълъг сезон",
       "подходящ за наеми"
     ],
-
     "weaknesses": [
       "не предлага усещането за природа и плаж като Green Life",
       "по-градска среда",
       "по-натоварен район"
+    ],
+    "beach_distance_meters": 650,
+    "beach_proximity_score": 6,
+    "quiet_score": 5,
+    "family_score": 8,
+    "investment_score": 9,
+    "nature_score": 5,
+    "urban_score": 8,
+    "year_round_score": 7,
+    "atmosphere": [
+      "активна resort атмосфера",
+      "силна инфраструктура",
+      "по-градска среда",
+      "динамичен туристически район"
     ]
   },
   {
-  "id": "city-residence",
-
-  "name": "City Residence",
-
-  "location": "Слънчев бряг",
-
-  "area": "централна зона",
-
-  "year_round": true,
-
-  "good_for": [
-    "инвестиция",
-    "отдаване под наем",
-    "целогодишно живеене"
-  ],
-
-  "not_good_for": [
-    "resort спокойствие"
-  ],
-
-  "beach_distance": "средно",
-
-  "maintenance_fee_level": "ниска",
-
-  "noise_level": "средно",
-
-  "rental_potential": "висок",
-
-  "installment_plan": true,
-
-  "installment_note": "Възможно е разсрочване според схемата на инвеститора.",
-
-  "act16_status": "в строителство",
-
-  "act16_note": "Комплексът е в процес на строителство.",
-
-  "finish_stage": "до ключ",
-
-  "environment_profile": [
-    "градска среда",
-    "инфраструктура",
-    "целогодишен район"
-  ],
-
-  "tags": [
-    "инвестиция",
-    "целогодишно",
-    "градска среда",
-    "добри наеми",
-    "нова сграда"
-  ],
-
-  "infrastructure": [
-    "магазини",
-    "ресторанти",
-    "автобусна спирка",
-    "паркинг",
-    "целогодишна инфраструктура",
-    "близо до центъра"
-  ],
-
-  "strengths": [
-    "добра локация за инвестиция",
-    "подходящ за целогодишно живеене",
-    "ниска поддръжка",
-    "нова сграда"
-  ],
-
-  "weaknesses": [
-    "не е resort комплекс",
-    "няма голяма озеленена територия",
-    "не е първа линия"
-  ]
-},
-{
-  "name": "Casa Blanca",
-  "location": "Черноморец",
-
-  "type": "boutique residential building",
-
-  "beach_distance": 440,
-
-  "beach_line": "2-ра линия",
-
-  "construction_stage": "в строителство",
-
-  "act16": false,
-
-  "maintenance_fee": 0,
-
-  "year_round": true,
-
-  "installments": true,
-
-  "elevator": false,
-
-  "pool": false,
-
-  "spa": false,
-
-  "restaurant": false,
-
-  "parking": true,
-
-  "garage_option": true,
-
-  "target_clients": [
-    "целогодишно живеене",
-    "семейства",
-    "инвестиция",
-    "втори дом"
-  ],
-
-  "strengths": [
-    "централна локация",
-    "без такса поддръжка",
-    "бутикова сграда",
-    "спокойна среда",
-    "подходящо за целогодишно живеене",
-    "добра инфраструктура",
-    "възможност за разсрочено плащане"
-  ],
-
-  "weaknesses": [
-    "няма басейн",
-    "няма СПА",
-    "няма resort инфраструктура"
-  ],
-
-  "lifestyle": [
-    "спокойствие",
-    "морски град",
-    "локална среда",
-    "целогодишен живот",
-    "по-ниска гъстота"
-  ],
-
-  "infrastructure_score": 8,
-
-  "rental_score": 6,
-
-  "family_score": 9,
-
-  "luxury_score": 6,
-
-  "investment_score": 7,
-
-  "quiet_score": 9,
-
-  "nightlife_score": 3,
-
-  "nature_score": 8,
-
-  "description": "Бутикова жилищна сграда в центъра на Черноморец без такса поддръжка, подходяща за целогодишно живеене и инвестиция."
-},
-{
-  "name": "Vista Verde",
-
-  "location": "Бургас",
-
-  "district": "Меден рудник",
-
-  "type": "urban residential building",
-
-  "beach_distance": null,
-
-  "beach_line": "градска среда",
-
-  "construction_stage": "в строителство",
-
-  "act16": false,
-
-  "maintenance_fee": 0,
-
-  "year_round": true,
-
-  "installments": true,
-
-  "elevator": true,
-
-  "pool": false,
-
-  "spa": false,
-
-  "restaurant": false,
-
-  "parking": true,
-
-  "garage_option": true,
-
-  "target_clients": [
-    "целогодишно живеене",
-    "семейства",
-    "инвестиция",
-    "първо жилище"
-  ],
-
-  "strengths": [
-    "градска инфраструктура",
-    "подходящо за целогодишно живеене",
-    "ново строителство",
-    "добра локация",
-    "подходящо за семейства",
-    "близо до магазини и транспорт",
-    "възможност за разсрочено плащане"
-  ],
-
-  "weaknesses": [
-    "не е морски resort",
-    "няма басейн",
-    "няма СПА",
-    "няма ваканционна атмосфера"
-  ],
-
-  "lifestyle": [
-    "градски живот",
-    "целогодишно живеене",
-    "локална среда",
-    "семейна среда",
-    "ежедневно удобство"
-  ],
-
-  "infrastructure_score": 9,
-
-  "rental_score": 7,
-
-  "family_score": 9,
-
-  "luxury_score": 5,
-
-  "investment_score": 8,
-
-  "quiet_score": 7,
-
-  "nightlife_score": 4,
-
-  "nature_score": 5,
-
-  "description": "Модерна жилищна сграда в Бургас, подходяща за целогодишно живеене, семейства и инвестиция."
-}
+    "id": "city-residence",
+    "name": "City Residence",
+    "location": "Слънчев бряг",
+    "area": "централна зона",
+    "year_round": true,
+    "good_for": [
+      "инвестиция",
+      "отдаване под наем",
+      "целогодишно живеене"
+    ],
+    "not_good_for": [
+      "resort спокойствие"
+    ],
+    "beach_distance": "средно",
+    "maintenance_fee_level": "ниска",
+    "noise_level": "средно",
+    "rental_potential": "висок",
+    "installment_plan": true,
+    "installment_note": "Възможно е разсрочване според схемата на инвеститора.",
+    "act16_status": "в строителство",
+    "act16_note": "Комплексът е в процес на строителство.",
+    "finish_stage": "до ключ",
+    "environment_profile": [
+      "градска среда",
+      "инфраструктура",
+      "целогодишен район"
+    ],
+    "tags": [
+      "инвестиция",
+      "целогодишно",
+      "градска среда",
+      "добри наеми",
+      "нова сграда"
+    ],
+    "infrastructure": [
+      "магазини",
+      "ресторанти",
+      "автобусна спирка",
+      "паркинг",
+      "целогодишна инфраструктура",
+      "близо до центъра"
+    ],
+    "strengths": [
+      "добра локация за инвестиция",
+      "подходящ за целогодишно живеене",
+      "ниска поддръжка",
+      "нова сграда"
+    ],
+    "weaknesses": [
+      "не е resort комплекс",
+      "няма голяма озеленена територия",
+      "не е първа линия"
+    ],
+    "beach_distance_meters": 700,
+    "beach_proximity_score": 5,
+    "quiet_score": 6,
+    "family_score": 7,
+    "investment_score": 8,
+    "nature_score": 4,
+    "urban_score": 8,
+    "year_round_score": 8,
+    "atmosphere": [
+      "градска среда",
+      "по-практично усещане",
+      "целогодишна функционалност",
+      "нова жилищна сграда"
+    ]
+  },
+  {
+    "name": "Casa Blanca",
+    "location": "Черноморец",
+    "type": "boutique residential building",
+    "beach_distance": 440,
+    "beach_line": "2-ра линия",
+    "construction_stage": "в строителство",
+    "act16": false,
+    "maintenance_fee": 0,
+    "year_round": true,
+    "installments": true,
+    "elevator": false,
+    "pool": false,
+    "spa": false,
+    "restaurant": false,
+    "parking": true,
+    "garage_option": true,
+    "target_clients": [
+      "целогодишно живеене",
+      "семейства",
+      "инвестиция",
+      "втори дом"
+    ],
+    "strengths": [
+      "централна локация",
+      "без такса поддръжка",
+      "бутикова сграда",
+      "спокойна среда",
+      "подходящо за целогодишно живеене",
+      "добра инфраструктура",
+      "възможност за разсрочено плащане"
+    ],
+    "weaknesses": [
+      "няма басейн",
+      "няма СПА",
+      "няма resort инфраструктура"
+    ],
+    "lifestyle": [
+      "спокойствие",
+      "морски град",
+      "локална среда",
+      "целогодишен живот",
+      "по-ниска гъстота"
+    ],
+    "infrastructure_score": 8,
+    "rental_score": 6,
+    "family_score": 9,
+    "luxury_score": 6,
+    "investment_score": 7,
+    "quiet_score": 9,
+    "nightlife_score": 3,
+    "nature_score": 8,
+    "description": "Бутикова жилищна сграда в центъра на Черноморец без такса поддръжка, подходяща за целогодишно живеене и инвестиция.",
+    "id": "casa-blanca-chernomorets",
+    "beach_distance_meters": 440,
+    "beach_proximity_score": 8,
+    "urban_score": 7,
+    "year_round_score": 9,
+    "atmosphere": [
+      "бутикова морска сграда",
+      "спокойна локална среда",
+      "по-ниска гъстота",
+      "целогодишен морски живот"
+    ]
+  },
+  {
+    "name": "Vista Verde",
+    "location": "Бургас",
+    "district": "Меден рудник",
+    "type": "urban residential building",
+    "beach_distance": null,
+    "beach_line": "градска среда",
+    "construction_stage": "в строителство",
+    "act16": false,
+    "maintenance_fee": 0,
+    "year_round": true,
+    "installments": true,
+    "elevator": true,
+    "pool": false,
+    "spa": false,
+    "restaurant": false,
+    "parking": true,
+    "garage_option": true,
+    "target_clients": [
+      "целогодишно живеене",
+      "семейства",
+      "инвестиция",
+      "първо жилище"
+    ],
+    "strengths": [
+      "градска инфраструктура",
+      "подходящо за целогодишно живеене",
+      "ново строителство",
+      "добра локация",
+      "подходящо за семейства",
+      "близо до магазини и транспорт",
+      "възможност за разсрочено плащане"
+    ],
+    "weaknesses": [
+      "не е морски resort",
+      "няма басейн",
+      "няма СПА",
+      "няма ваканционна атмосфера"
+    ],
+    "lifestyle": [
+      "градски живот",
+      "целогодишно живеене",
+      "локална среда",
+      "семейна среда",
+      "ежедневно удобство"
+    ],
+    "infrastructure_score": 9,
+    "rental_score": 7,
+    "family_score": 9,
+    "luxury_score": 5,
+    "investment_score": 8,
+    "quiet_score": 7,
+    "nightlife_score": 4,
+    "nature_score": 5,
+    "description": "Модерна жилищна сграда в Бургас, подходяща за целогодишно живеене, семейства и инвестиция.",
+    "id": "vista-verde-burgas",
+    "beach_distance_meters": null,
+    "beach_proximity_score": 1,
+    "urban_score": 10,
+    "year_round_score": 10,
+    "atmosphere": [
+      "градски живот",
+      "ежедневно удобство",
+      "семейна жилищна среда",
+      "фокус върху практично живеене"
+    ]
+  }
 ]
