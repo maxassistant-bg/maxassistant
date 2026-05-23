@@ -838,7 +838,7 @@ function buildAISearchStatus(results) {
 
       <p class="ai-search-status-note">
         Първо бяха проверени реалните имоти и ценовите таблици в локалната база на NewHome Bulgaria.
-        Резултатите по-долу не са първият намерен имот, а кандидати, подредени според релевантност.
+        Резултатите по-долу са реалните локални кандидати, подредени и групирани според AI релевантност.
       </p>
 
       <div class="ai-search-status-grid">
@@ -870,23 +870,47 @@ function buildAISearchStatus(results) {
 
 
 function groupResultsByRelevance(results) {
+  if (!results.length) {
+    return {
+      primary: [],
+      secondary: [],
+      weak: []
+    };
+  }
+
+  const bestScore = results[0].score;
+
+  const primary = [];
+  const secondary = [];
+  const weak = [];
+
+  results.forEach((item, index) => {
+    if (index === 0 || item.score >= bestScore - 15) {
+      primary.push(item);
+      return;
+    }
+
+    if (item.score >= bestScore - 45) {
+      secondary.push(item);
+      return;
+    }
+
+    weak.push(item);
+  });
+
   return {
-    primary: results.filter(item => item.score >= 120),
-    secondary: results.filter(item => item.score >= 70 && item.score < 120),
-    weak: results.filter(item => item.score > 0 && item.score < 70)
+    primary,
+    secondary,
+    weak
   };
 }
 
 function getMatchLabel(item) {
-  if (item.score >= 120) {
-    return "Най-силно AI съвпадение";
+  if (!item || typeof item.score === "undefined") {
+    return "AI съвпадение";
   }
 
-  if (item.score >= 70) {
-    return "Алтернативно релевантно предложение";
-  }
-
-  return "Допълнителна възможност";
+  return item._matchLabel || "AI съвпадение";
 }
 
 function renderResultGroup(title, description, items) {
@@ -1037,6 +1061,18 @@ function renderResults(results) {
   }
 
   const groupedResults = groupResultsByRelevance(results);
+
+  groupedResults.primary.forEach(item => {
+    item._matchLabel = "Най-добро AI съвпадение";
+  });
+
+  groupedResults.secondary.forEach(item => {
+    item._matchLabel = "Алтернативно релевантно предложение";
+  });
+
+  groupedResults.weak.forEach(item => {
+    item._matchLabel = "Допълнителна възможност";
+  });
 
   resultsBox.innerHTML = `
     ${aiStatus}
