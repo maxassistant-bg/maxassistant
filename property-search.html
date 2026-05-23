@@ -538,19 +538,43 @@ async function searchExternalSources(query) {
       return;
     }
 
+    const limitedResults = data.results.slice(0, 5);
+
     externalBox.innerHTML = `
       <div class="card external-search-card">
-        <h3>Допълнително търсене в NewHomeBulgaria</h3>
+        <h3>Допълнителни резултати от външни сайтове</h3>
         <p>
-          Освен локалната AI база, MaxAssistant намери възможност за търсене
-          във външния източник NewHomeBulgaria.
+          MaxAssistant провери позволените външни източници и намери още възможни страници,
+          които може да са свързани с търсенето.
         </p>
 
-        ${data.results.map(result => `
-          <a href="${result.url}" target="_blank" class="button property-link">
-            Отвори резултатите в ${result.source}
-          </a>
-        `).join("")}
+        <div class="external-results-grid">
+          ${limitedResults.map(result => `
+            <div class="external-result-item">
+
+              ${result.image ? `
+                <img src="${result.image}" alt="${result.title}" class="external-result-image">
+              ` : ""}
+
+              <div class="external-result-content">
+                <div class="external-result-source">
+                  ${result.source || "Външен източник"}
+                </div>
+
+                <h4>${result.title || "Външен резултат"}</h4>
+
+                ${result.excerpt ? `
+                  <p>${result.excerpt}</p>
+                ` : ""}
+
+                <a href="${result.url}" target="_blank" class="button external-result-link">
+                  Отвори
+                </a>
+              </div>
+
+            </div>
+          `).join("")}
+        </div>
       </div>
     `;
   } catch (error) {
