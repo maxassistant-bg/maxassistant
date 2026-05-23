@@ -51,11 +51,68 @@ const SOURCES = [
 
 const SITEMAP_PATHS = ["/wp-sitemap.xml", "/sitemap.xml", "/sitemap_index.xml"];
 
+const KNOWN_LOCATIONS = [
+  {
+    canonical: "созопол",
+    aliases: ["созопол", "sozopol"]
+  },
+  {
+    canonical: "слънчев бряг",
+    aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"]
+  },
+  {
+    canonical: "свети влас",
+    aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"]
+  },
+  {
+    canonical: "бургас",
+    aliases: ["бургас", "burgas"]
+  },
+  {
+    canonical: "черноморец",
+    aliases: ["черноморец", "chernomorets"]
+  },
+  {
+    canonical: "поморие",
+    aliases: ["поморие", "pomorie"]
+  },
+  {
+    canonical: "равда",
+    aliases: ["равда", "ravda"]
+  },
+  {
+    canonical: "несебър",
+    aliases: ["несебър", "nesebar", "nessebar"]
+  },
+  {
+    canonical: "лозенец",
+    aliases: ["лозенец", "lozenets"]
+  },
+  {
+    canonical: "царево",
+    aliases: ["царево", "tsarevo"]
+  }
+];
+
 const BLOCKED_URL_PARTS = [
   ".css", ".js", ".xml", ".json", ".woff", ".woff2", ".ttf", ".eot", ".svg",
   "/wp-content/", "/wp-includes/", "/wp-json/", "/feed/", "/comments/",
   "/trackback/", "/xmlrpc", "translate", "plugins", "themes", "fonts",
   "admin", "login", "author", "tag/", "category/", "cart", "checkout"
+];
+
+const GENERIC_PAGE_HINTS = [
+  "брокерски услуги",
+  "предложи имот",
+  "градски имоти",
+  "ваканционни имоти",
+  "начало",
+  "контакти",
+  "за нас",
+  "услуги",
+  "политика",
+  "cookie",
+  "privacy"
 ];
 
 const PROPERTY_URL_HINTS = [
@@ -72,14 +129,9 @@ const PROPERTY_TEXT_HINTS = [
   "обзаведен", "необзаведен", "до ключ", "продажба"
 ];
 
-const GENERIC_PAGE_HINTS = [
-  "брокерски услуги", "предложи имот", "градски имоти", "ваканционни имоти",
-  "начало", "контакти", "за нас", "услуги", "политика", "cookie", "privacy"
-];
-
 const MAX_SITEMAPS_PER_SOURCE = 8;
 const MAX_URLS_PER_SOURCE = 80;
-const MAX_PAGE_FETCHES_PER_SOURCE = 10;
+const MAX_PAGE_FETCHES_PER_SOURCE = 12;
 const REQUEST_TIMEOUT_MS = 7000;
 const MIN_REAL_PROPERTY_SCORE = 45;
 
@@ -94,22 +146,31 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const detectedLocations = detectQueryLocations(q);
     const enabledSources = SOURCES.filter(source => source.enabled);
 
-    const sourceResults = await Promise.all(
-      enabledSources.map(source => searchSource(source, q))
-    );
+    let finalResults = [];
 
-    const results = sourceResults
-      .flat()
-      .filter(result => result.real_property_match === true)
+    // Strict priority: first NewHome. Only if no good NewHome results,
+    // then continue source by source in the trusted order.
+    for (const source of enabledSources) {
+      const sourceResults = await searchSource(source, q, detectedLocations);
+
+      if (sourceResults.length) {
+        finalResults = sourceResults;
+        break;
+      }
+    }
+
+    const results = finalResults
       .sort((a, b) => b.score - a.score)
-      .slice(0, 8);
+      .slice(0, 5);
 
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "external_search_v4_strict_property_matches",
+      mode: "external_search_v5_strict_location_priority",
+      detected_locations: detectedLocations.map(location => location.canonical),
       total: results.length,
       results
     });
@@ -122,8 +183,8 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function searchSource(source, query) {
-  const tokens = tokenize(query);
+async function searchSource(source, query, detectedLocations) {
+  const tokens = tokenize(query, detectedLocations);
 
   let urls = await discoverUrls(source);
   if (!urls.length) urls = await fallbackHomepageLinks(source);
@@ -135,16 +196,21 @@ async function searchSource(source, query) {
     .slice(0, MAX_URLS_PER_SOURCE);
 
   const urlMatches = urls
-    .map(url => ({ url, urlScore: scoreUrl(url, tokens, source) }))
+    .map(url => ({ url, urlScore: scoreUrl(url, tokens, source, detectedLocations) }))
     .filter(item => item.urlScore > 0 || source.type === "trusted_core")
     .sort((a, b) => b.urlScore - a.urlScore)
     .slice(0, MAX_PAGE_FETCHES_PER_SOURCE);
 
   const pages = await Promise.all(
-    urlMatches.map(candidate => fetchPageResult(source, candidate.url, query, tokens, candidate.urlScore))
+    urlMatches.map(candidate =>
+      fetchPageResult(source, candidate.url, query, tokens, detectedLocations, candidate.urlScore)
+    )
   );
 
-  return pages.filter(Boolean);
+  return pages
+    .filter(Boolean)
+    .filter(page => page.real_property_match === true)
+    .sort((a, b) => b.score - a.score);
 }
 
 async function discoverUrls(source) {
@@ -206,7 +272,7 @@ async function fallbackHomepageLinks(source) {
   return unique(links).slice(0, MAX_URLS_PER_SOURCE);
 }
 
-async function fetchPageResult(source, url, query, tokens, urlScore) {
+async function fetchPageResult(source, url, query, tokens, detectedLocations, urlScore) {
   const html = await fetchText(url);
   if (!html) return null;
 
@@ -216,20 +282,33 @@ async function fetchPageResult(source, url, query, tokens, urlScore) {
   const clean = stripHtml(html).slice(0, 9000);
   const tableText = extractTableText(html);
 
+  const locationTextForMatch = [
+    title,
+    description,
+    url,
+    tableText
+  ].join(" ");
+
+  if (detectedLocations.length && !matchesDetectedLocation(locationTextForMatch, detectedLocations)) {
+    return null;
+  }
+
   const titleScore = scoreText(title, tokens) * 5;
   const descScore = scoreText(description, tokens) * 3;
   const bodyScore = scoreText(clean, tokens);
   const tableScore = scoreText(tableText, tokens) * 5;
 
   const propertySignalScore = scorePropertySignals(title + " " + description + " " + clean + " " + tableText);
-  const genericPenalty = isGenericPage(title, description, url) ? -80 : 0;
-  const newHomeBoost = source.type === "trusted_core" ? 25 : 0;
-  const tableBoost = tableText ? 22 : 0;
+  const genericPenalty = isGenericPage(title, description, url) ? -100 : 0;
+  const newHomeBoost = source.type === "trusted_core" ? 35 : 0;
+  const tableBoost = tableText ? 25 : 0;
   const sourceBoost = source.priority / 10;
+  const exactLocationBoost = detectedLocations.length ? 35 : 0;
 
   const score =
     urlScore + titleScore + descScore + bodyScore + tableScore +
-    propertySignalScore + genericPenalty + newHomeBoost + tableBoost + sourceBoost;
+    propertySignalScore + genericPenalty + newHomeBoost + tableBoost +
+    sourceBoost + exactLocationBoost;
 
   const realProperty = isRealPropertyResult({
     title,
@@ -238,7 +317,8 @@ async function fetchPageResult(source, url, query, tokens, urlScore) {
     clean,
     tableText,
     score,
-    tokens
+    tokens,
+    detectedLocations
   });
 
   if (!realProperty) return null;
@@ -261,18 +341,39 @@ async function fetchPageResult(source, url, query, tokens, urlScore) {
   };
 }
 
-function isRealPropertyResult({ title, description, url, clean, tableText, score, tokens }) {
-  const all = normalize(title + " " + description + " " + url + " " + clean + " " + tableText);
+function isRealPropertyResult({ title, description, url, clean, tableText, score, tokens, detectedLocations }) {
+  const allForProperty = normalize(title + " " + description + " " + url + " " + clean + " " + tableText);
+  const allForLocation = normalize(title + " " + description + " " + url + " " + tableText);
 
   if (isGenericPage(title, description, url)) return false;
 
-  const hasQueryMatch = tokens.some(token => all.includes(token));
-  const hasPrice = /€|евро|\b[0-9]{2,3}\s?000\b|\b[0-9]{4,}\s?eur\b/i.test(all);
-  const hasArea = /кв\.?м|кв м|m2|площ/i.test(all);
-  const hasPropertyWord = /апартамент|студио|спалн|имот|жилищ|етаж|комплекс|сграда|продажба/i.test(all);
+  if (detectedLocations.length && !matchesDetectedLocation(allForLocation, detectedLocations)) {
+    return false;
+  }
+
+  const hasQueryMatch = tokens.some(token => allForProperty.includes(token));
+  const hasPrice = /€|евро|\b[0-9]{2,3}\s?000\b|\b[0-9]{4,}\s?eur\b/i.test(allForProperty);
+  const hasArea = /кв\.?м|кв м|m2|площ/i.test(allForProperty);
+  const hasPropertyWord = /апартамент|студио|спалн|имот|жилищ|етаж|комплекс|сграда|продажба/i.test(allForProperty);
   const hasTable = Boolean(tableText);
 
   return hasQueryMatch && hasPropertyWord && (hasPrice || hasArea || hasTable) && score >= MIN_REAL_PROPERTY_SCORE;
+}
+
+function detectQueryLocations(query) {
+  const normalizedQuery = normalize(query);
+
+  return KNOWN_LOCATIONS.filter(location =>
+    location.aliases.some(alias => normalizedQuery.includes(normalize(alias)))
+  );
+}
+
+function matchesDetectedLocation(text, detectedLocations) {
+  const normalizedText = normalize(text);
+
+  return detectedLocations.some(location =>
+    location.aliases.some(alias => normalizedText.includes(normalize(alias)))
+  );
 }
 
 function isGenericPage(title, description, url) {
@@ -342,12 +443,16 @@ function isPropertyLikeUrl(url, source) {
   return false;
 }
 
-function scoreUrl(url, tokens, source) {
+function scoreUrl(url, tokens, source, detectedLocations) {
   const lower = normalize(url);
   let score = 0;
 
   for (const token of tokens) {
     if (lower.includes(token)) score += 12;
+  }
+
+  if (detectedLocations.length && matchesDetectedLocation(url, detectedLocations)) {
+    score += 35;
   }
 
   if (source.type === "trusted_core") score += 18;
@@ -432,7 +537,11 @@ function scoreText(text, tokens) {
   return score;
 }
 
-function tokenize(text) {
+function tokenize(text, detectedLocations = []) {
+  const locationAliases = detectedLocations.flatMap(location =>
+    location.aliases.map(alias => normalize(alias))
+  );
+
   return normalize(text)
     .split(/\s+/)
     .map(token => token.trim())
@@ -440,7 +549,8 @@ function tokenize(text) {
     .filter(token => ![
       "апартамент", "апартаменти", "имот", "имоти", "евро", "кв", "квм", "m2",
       "стаи", "стая", "до", "от", "за", "във", "в", "на", "и"
-    ].includes(token));
+    ].includes(token))
+    .filter(token => !locationAliases.includes(token));
 }
 
 function normalize(text) {
