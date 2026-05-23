@@ -458,6 +458,20 @@ document.getElementById("searchButton").addEventListener("click", function () {
 
   renderResults(results);
 
+  const externalQuery = buildExternalSearchQuery({
+    location,
+    propertyType,
+    rooms,
+    budget,
+    minArea,
+    constructionStage,
+    beachLine,
+    maintenance,
+    freeText
+  });
+
+  searchExternalSources(externalQuery);
+
 setTimeout(() => {
   const resultsBox = document.getElementById("results");
   const firstResult = resultsBox.querySelector(".card");
@@ -475,6 +489,82 @@ setTimeout(() => {
 
 });
 
+
+/* Външно търсене */
+function buildExternalSearchQuery(filters) {
+  const parts = [];
+
+  if (filters.location) parts.push(filters.location);
+  if (filters.propertyType) parts.push(filters.propertyType);
+  if (filters.rooms) parts.push(filters.rooms + " стаи");
+  if (filters.budget) parts.push("до " + filters.budget + " евро");
+  if (filters.minArea) parts.push("от " + filters.minArea + " кв.м");
+  if (filters.constructionStage) parts.push(filters.constructionStage);
+  if (filters.beachLine) parts.push(filters.beachLine);
+  if (filters.maintenance) parts.push("такса " + filters.maintenance);
+  if (filters.freeText) parts.push(filters.freeText);
+
+  return parts.join(" ").trim();
+}
+
+async function searchExternalSources(query) {
+  const externalBox = document.getElementById("externalResults");
+
+  if (!externalBox) return;
+
+  if (!query || query.length < 2) {
+    externalBox.innerHTML = "";
+    return;
+  }
+
+  externalBox.innerHTML = `
+    <div class="card external-search-card">
+      <h3>Търсене във външни източници...</h3>
+      <p>MaxAssistant проверява NewHomeBulgaria за допълнителни резултати.</p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch(`/api/external-search?q=${encodeURIComponent(query)}`);
+    const data = await response.json();
+
+    if (!data.ok || !data.results || !data.results.length) {
+      externalBox.innerHTML = `
+        <div class="card external-search-card">
+          <h3>Няма външни резултати</h3>
+          <p>В момента не са намерени допълнителни резултати във външните източници.</p>
+        </div>
+      `;
+      return;
+    }
+
+    externalBox.innerHTML = `
+      <div class="card external-search-card">
+        <h3>Допълнително търсене в NewHomeBulgaria</h3>
+        <p>
+          Освен локалната AI база, MaxAssistant намери възможност за търсене
+          във външния източник NewHomeBulgaria.
+        </p>
+
+        ${data.results.map(result => `
+          <a href="${result.url}" target="_blank" class="button property-link">
+            Отвори резултатите в ${result.source}
+          </a>
+        `).join("")}
+      </div>
+    `;
+  } catch (error) {
+    console.error("External search error:", error);
+
+    externalBox.innerHTML = `
+      <div class="card external-search-card">
+        <h3>Външното търсене временно не е достъпно</h3>
+        <p>Локалната AI търсачка работи нормално. Външният слой ще бъде проверен отново по-късно.</p>
+      </div>
+    `;
+  }
+}
+
 /* Показване */
 function renderResults(results) {
   const resultsBox = document.getElementById("results");
@@ -482,11 +572,13 @@ function renderResults(results) {
   if (!results.length) {
     resultsBox.innerHTML = `
       <div class="card">
-        <h3>Няма точен резултат</h3>
+        <h3>Няма точен резултат в локалната база</h3>
         <p>
-          Това не означава, че няма подходящ имот. Базата с апартаменти и ценови листи тепърва ще се разширява.
+          Това не означава, че няма подходящ имот. MaxAssistant ще провери и външните източници.
         </p>
       </div>
+
+      <div id="externalResults" class="external-results"></div>
     `;
     return;
   }
@@ -597,6 +689,8 @@ function renderResults(results) {
 
     </div>
   `).join("") + `
+    <div id="externalResults" class="external-results"></div>
+
     <button class="button new-search-button" onclick="scrollToSearch()">
       Ново търсене
     </button>
