@@ -7,6 +7,58 @@
 <title>AI търсачка - MaxAssistant</title>
 
 <link rel="stylesheet" href="style.css">
+
+<style>
+.ai-search-status {
+  border-left: 4px solid #1f6feb;
+  background: #f7fbff;
+}
+
+.ai-search-status h3 {
+  margin-bottom: 10px;
+}
+
+.ai-search-status p {
+  margin-bottom: 8px;
+}
+
+.ai-search-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.ai-search-status-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.ai-search-status-item strong {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.ai-search-status-item span {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.ai-search-status-note {
+  color: #374151;
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  .ai-search-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -652,11 +704,56 @@ async function searchExternalSources(query) {
 }
 
 /* Показване */
+
+function buildAISearchStatus(results) {
+  const checkedProperties = properties.length;
+  const foundCandidates = results.length;
+  const hasResults = foundCandidates > 0;
+
+  const topScore = hasResults ? results[0].score : 0;
+  const topComplex = hasResults ? results[0].complex : "няма избран водещ комплекс";
+
+  return `
+    <div class="card ai-search-status">
+      <h3>AI анализ на търсенето</h3>
+
+      <p class="ai-search-status-note">
+        MaxAssistant първо провери локалната база на NewHome Bulgaria, защото тя е основният доверен източник.
+        Резултатите по-долу не са първият намерен имот, а кандидати, подредени според релевантност.
+      </p>
+
+      <div class="ai-search-status-grid">
+        <div class="ai-search-status-item">
+          <strong>${checkedProperties}</strong>
+          <span>проверени имота в локалната база</span>
+        </div>
+
+        <div class="ai-search-status-item">
+          <strong>${foundCandidates}</strong>
+          <span>намерени локални кандидата</span>
+        </div>
+
+        <div class="ai-search-status-item">
+          <strong>${topScore}</strong>
+          <span>AI точки на най-силното съвпадение</span>
+        </div>
+      </div>
+
+      <p class="ai-search-status-note">
+        ${hasResults
+          ? `Водещото съвпадение е от ${topComplex}. MaxAssistant ще покаже и причините за всяка препоръка в детайлите на картата.`
+          : `Не е намерено достатъчно силно локално съвпадение. Затова системата ще провери и външния discovery layer.`
+        }
+      </p>
+    </div>
+  `;
+}
+
 function renderResults(results) {
   const resultsBox = document.getElementById("results");
 
   if (!results.length) {
-    resultsBox.innerHTML = `
+    resultsBox.innerHTML = buildAISearchStatus(results) + `
       <div class="card">
         <h3>Няма точен резултат в локалната база</h3>
         <p>
@@ -669,7 +766,7 @@ function renderResults(results) {
     return;
   }
 
-  resultsBox.innerHTML = results.map(item => `
+  resultsBox.innerHTML = buildAISearchStatus(results) + results.map(item => `
     <div class="card property-card">
 
       ${item.image ? `
