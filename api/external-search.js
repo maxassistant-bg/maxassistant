@@ -277,7 +277,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   const uniqueListingUrls = unique(listingUrls)
     .filter(url => isAllowedUrl(url, source.domain))
     .filter(url => !isBlockedUrl(url))
-    .filter(url => isLikelyListingUrl(url, source))
+    .filter(url => isConcreteListingUrl(url, source))
     .slice(0, MAX_DETAIL_FETCHES_PER_SOURCE);
 
   diag.extracted_listing_urls = uniqueListingUrls.length;
@@ -357,7 +357,7 @@ function extractListingUrlsFromSearchPage(source, html, pageUrl) {
   return anchors
     .filter(a => !isBadAnchorTitle(a.text))
     .filter(a => isAllowedUrl(a.url, source.domain))
-    .filter(a => isLikelyListingUrl(a.url, source))
+    .filter(a => isConcreteListingUrl(a.url, source))
     .map(a => a.url);
 }
 
@@ -366,6 +366,11 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
   if (!html) return null;
 
   const detail = extractDetailFromHtml(html, url);
+
+  if (!isConcreteDetailPage(detail, url, source, queryIntent)) {
+    return null;
+  }
+
   const scored = scoreDetailResult(detail, queryIntent, source, source.priority / 20, "portal");
 
   if (scored.score < MIN_PORTAL_SCORE) return null;
@@ -456,12 +461,16 @@ function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
 
   if (queryIntent.propertyType) {
     const exactType = queryIntent.propertyType.aliases.some(alias => all.includes(normalize(alias)));
+    const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
 
-    if (exactType) {
+    if (conflictType) {
+      score -= mode === "trusted_site" ? 35 : 120;
+      reasons.push("открит е различен тип имот: " + conflictType);
+    } else if (exactType) {
       score += 32;
       reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
     } else if (hasGeneralApartmentSignal(all)) {
-      score += 12;
+      score += mode === "trusted_site" ? 12 : 4;
       reasons.push("има общ сигнал за апартамент, но типът трябва да се провери");
     } else {
       score -= 25;
@@ -657,14 +666,134 @@ function scoreNewHomeUrl(url, queryIntent) {
   return score;
 }
 
+
+function isConcreteListingUrl(url, source) {
+  const lower = String(url || "").toLowerCase();
+
+  if (isSearchOrCategoryUrl(url, source)) {
+    return false;
+  }
+
+  if (source.domain === "alo.bg") {
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
+  }
+
+  if (source.domain === "imot.bg") {
+    return lower.includes("imot.cgi") && lower.includes("act=5");
+  }
+
+  if (source.domain === "realistimo.com") {
+    return /\/bg\/(buy|property)\/[^/?#]+/i.test(lower) && !lower.includes("/bg/buy?");
+  }
+
+  return false;
+}
+
+function isSearchOrCategoryUrl(url, source) {
+  const lower = String(url || "").toLowerCase();
+
+  if (source.domain === "alo.bg") {
+    return (
+      lower.includes("/searchq/") ||
+      lower.includes("/obiavi/imoti-prodajbi/apartamenti-stai/") ||
+      lower.includes("location_ids=") ||
+      lower.includes("order_by=")
+    );
+  }
+
+  if (source.domain === "imot.bg") {
+    return lower.includes("act=3") || lower.includes("rub=");
+  }
+
+  if (source.domain === "realistimo.com") {
+    return lower.includes("/bg/buy?") || lower.includes("/bg/properties?");
+  }
+
+  return false;
+}
+
+function isConcreteDetailPage(detail, url, source, queryIntent) {
+  if (!detail || !detail.title) return false;
+
+  if (!isConcreteListingUrl(url, source)) {
+    return false;
+  }
+
+  const all = normalize([
+    detail.title,
+    detail.description,
+    detail.excerpt,
+    detail.clean,
+    detail.tableText,
+    url
+  ].join(" "));
+
+  if (!hasGeneralApartmentSignal(all)) {
+    return false;
+  }
+
+  if (queryIntent.location) {
+    const hasLocation = queryIntent.location.aliases.some(alias =>
+      all.includes(normalize(alias))
+    );
+
+    if (!hasLocation) {
+      return false;
+    }
+  }
+
+  if (queryIntent.propertyType) {
+    const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
+
+    if (conflictType) {
+      return false;
+    }
+
+    const exactType = queryIntent.propertyType.aliases.some(alias =>
+      all.includes(normalize(alias))
+    );
+
+    if (!exactType && source.type === "trusted_portal") {
+      return false;
+    }
+  }
+
+  return Boolean(detail.price || detail.area || /€|eur|евро|кв м|кв\.м|m2|m²/.test(all));
+}
+
+function detectConflictingPropertyType(text, requestedType) {
+  const normalized = normalize(text);
+
+  if (!requestedType) return "";
+
+  const hasStudio = /студио|едностаен|1 стая|1стаен|studio/.test(normalized);
+  const hasOneBedroom = /една спалня|1 спалня|двустаен|две стаи|2 стаи|one bedroom/.test(normalized);
+  const hasTwoBedroom = /две спални|2 спални|тристаен|три стаи|3 стаи|two bedroom/.test(normalized);
+
+  if (requestedType.canonical === "студио") {
+    if (hasOneBedroom) return "една спалня";
+    if (hasTwoBedroom) return "две спални";
+  }
+
+  if (requestedType.canonical === "една спалня") {
+    if (hasStudio) return "студио";
+    if (hasTwoBedroom) return "две спални";
+  }
+
+  if (requestedType.canonical === "две спални") {
+    if (hasStudio) return "студио";
+    if (hasOneBedroom) return "една спалня";
+  }
+
+  return "";
+}
+
+
 function isLikelyListingUrl(url, source) {
   const lower = url.toLowerCase();
 
   if (source.domain === "alo.bg") {
-    return (
-      lower.includes("/obiavi/") ||
-      /\/[a-z0-9-]+-[0-9]{6,}/.test(lower)
-    );
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
   }
 
   if (source.domain === "imot.bg") {
