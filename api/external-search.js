@@ -1088,3 +1088,4 @@ function decodeHtml(text) {
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
