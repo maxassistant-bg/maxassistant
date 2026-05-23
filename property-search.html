@@ -491,45 +491,49 @@ function renderResults(results) {
     return;
   }
 
- resultsBox.innerHTML = results.map(item => `
-    <div class="card property-result-card">
+  resultsBox.innerHTML = results.map(item => `
+    <div class="card property-card">
 
       ${item.image ? `
         <img src="${item.image}" alt="${item.complex}" class="property-image">
       ` : ""}
 
-      <div class="property-summary">
+      <div class="property-card-main">
 
-        <div class="property-price-hero">
-          ${item.price ? Number(item.price).toLocaleString() + " €" : "Цена при запитване"}
-        </div>
+        ${item.price ? `
+          <div class="property-price-hero">
+            ${Number(item.price).toLocaleString()} €
+          </div>
+        ` : ""}
 
         <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
 
-        <p class="property-location-line">
+        <div class="property-location-line">
           ${item.location || "Няма данни"}${item.building ? " / " + item.building : ""}
-        </p>
-
-        <div class="property-key-facts">
-          <span>${item.area || "—"} кв.м</span>
-          <span>${item.rooms || "—"} стаи</span>
-          <span>Етаж ${item.floor || "—"}</span>
-          <span>${item.view || "Гледка: няма данни"}</span>
         </div>
 
-        ${item.url ? `
-          <a href="${item.url}" target="_blank" class="button property-link">
-            Виж обявата
-          </a>
-        ` : ""}
+        <div class="property-summary-grid">
+          <div><strong>Площ</strong><span>${item.area || "Няма данни"} кв.м</span></div>
+          <div><strong>Стаи</strong><span>${item.rooms || "Няма данни"}</span></div>
+          <div><strong>Етаж</strong><span>${item.floor ?? "Няма данни"}</span></div>
+          <div><strong>Гледка</strong><span>${item.view || "Няма данни"}</span></div>
+        </div>
 
-        <button class="details-toggle" onclick="togglePropertyDetails(this)">
-          Покажи повече
-        </button>
+        <div class="property-actions">
+          ${item.url ? `
+            <a href="${item.url}" target="_blank" class="button property-link">
+              Виж обявата
+            </a>
+          ` : ""}
+
+          <button type="button" class="button details-toggle" onclick="togglePropertyDetails(this)">
+            Покажи повече
+          </button>
+        </div>
 
       </div>
 
-      <div class="property-details-panel">
+      <div class="property-details-more">
 
         ${item.aiAnswer && item.aiAnswer.length ? `
           <div class="ai-answer">
@@ -540,26 +544,25 @@ function renderResults(results) {
           </div>
         ` : ""}
 
-        <div class="property-details-grid">
+        <div class="detail-list">
           <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
           <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
           <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
           <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
-          <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
+          <p><strong>Етаж:</strong> ${item.floor ?? "Няма данни"}</p>
           <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
           <p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
-          <p><strong>Балкони:</strong> ${item.balconies || "Няма данни"}</p>
+          <p><strong>Балкони:</strong> ${item.balconies ?? "Няма данни"}</p>
           <p><strong>Склад:</strong> ${item.storage_room ? "Да" : "Не"}</p>
           <p><strong>Гардеробна:</strong> ${item.walk_in_closet ? "Да" : "Не"}</p>
           <p><strong>Мазе:</strong> ${item.basement ? "Да" : "Не"}</p>
           <p><strong>Гледка:</strong> ${item.view || "Няма данни"}</p>
           <p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
-          <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
           <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
           <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
           <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
           <p><strong>Линия до плаж:</strong> ${item.beach_line || "Няма данни"}</p>
-          <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
+          <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee ?? "Няма данни"}</p>
           <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
           <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
         </div>
@@ -593,22 +596,23 @@ function renderResults(results) {
       </div>
 
     </div>
-    `).join("") + `
-  <button class="button new-search-button" onclick="scrollToSearch()">
-    Ново търсене
-  </button>
-`;
+  `).join("") + `
+    <button class="button new-search-button" onclick="scrollToSearch()">
+      Ново търсене
+    </button>
+  `;
 }
 
 function togglePropertyDetails(button) {
-  const card = button.closest(".property-result-card");
-  const panel = card.querySelector(".property-details-panel");
+  const card = button.closest(".property-card");
+  if (!card) return;
 
-  panel.classList.toggle("is-open");
+  const details = card.querySelector(".property-details-more");
+  if (!details) return;
 
-  button.textContent = panel.classList.contains("is-open")
-    ? "Скрий детайлите"
-    : "Покажи повече";
+  const isOpen = card.classList.toggle("is-open");
+  details.style.display = isOpen ? "block" : "none";
+  button.textContent = isOpen ? "Скрий детайлите" : "Покажи повече";
 }
 
 function scrollToSearch() {
