@@ -3,36 +3,49 @@ const SOURCES = [
     name: "NewHome Bulgaria",
     domain: "newhomebulgaria.com",
     baseUrl: "https://newhomebulgaria.com",
+    type: "trusted_core",
     enabled: true,
-    priority: 100
+    priority: 300
+  },
+  {
+    name: "Alo.bg",
+    domain: "alo.bg",
+    baseUrl: "https://www.alo.bg",
+    type: "trusted_portal",
+    enabled: true,
+    priority: 180
+  },
+  {
+    name: "Imot.bg",
+    domain: "imot.bg",
+    baseUrl: "https://www.imot.bg",
+    type: "trusted_portal",
+    enabled: true,
+    priority: 170
+  },
+  {
+    name: "Realistimo",
+    domain: "realistimo.com",
+    baseUrl: "https://realistimo.com/bg",
+    type: "trusted_portal",
+    enabled: true,
+    priority: 160
   },
   {
     name: "Vista Verde",
     domain: "lavistaverde.eu",
     baseUrl: "https://www.lavistaverde.eu",
+    type: "trusted_developer",
     enabled: true,
-    priority: 90
-  },
-  {
-    name: "Dinevi Resort",
-    domain: "dineviresort.bg",
-    baseUrl: "https://dineviresort.bg",
-    enabled: true,
-    priority: 85
+    priority: 130
   },
   {
     name: "Green Life",
     domain: "greenlife.bg",
     baseUrl: "https://greenlife.bg",
+    type: "trusted_developer",
     enabled: true,
-    priority: 85
-  },
-  {
-    name: "Imoti.bg",
-    domain: "imoti.bg",
-    baseUrl: "https://www.imoti.bg",
-    enabled: false,
-    priority: 70
+    priority: 120
   }
 ];
 
@@ -42,9 +55,65 @@ const SITEMAP_PATHS = [
   "/sitemap_index.xml"
 ];
 
+const BLOCKED_URL_PARTS = [
+  ".css",
+  ".js",
+  ".xml",
+  ".json",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+  ".svg",
+  "/wp-content/",
+  "/wp-includes/",
+  "/wp-json/",
+  "/feed/",
+  "/comments/",
+  "/trackback/",
+  "/xmlrpc",
+  "translate",
+  "plugins",
+  "themes",
+  "fonts",
+  "admin",
+  "login"
+];
+
+const PROPERTY_URL_HINTS = [
+  "listing",
+  "apartament",
+  "apartamenti",
+  "imot",
+  "imoti",
+  "nedvizhimi",
+  "prodazhba",
+  "kompleks",
+  "complex",
+  "resort",
+  "residence",
+  "sozopol",
+  "slanchev",
+  "sunny",
+  "burgas",
+  "chernomorets",
+  "sveti-vlas",
+  "vlas",
+  "pomorie",
+  "ravda",
+  "nesebar",
+  "lozenets",
+  "tsarevo",
+  "kasa",
+  "vista",
+  "green-life",
+  "cascadas",
+  "city-residence"
+];
+
 const MAX_SITEMAPS_PER_SOURCE = 8;
 const MAX_URLS_PER_SOURCE = 80;
-const MAX_PAGE_FETCHES_PER_SOURCE = 14;
+const MAX_PAGE_FETCHES_PER_SOURCE = 10;
 const REQUEST_TIMEOUT_MS = 7000;
 
 module.exports = async function handler(req, res) {
@@ -67,12 +136,12 @@ module.exports = async function handler(req, res) {
     const results = sourceResults
       .flat()
       .sort((a, b) => b.score - a.score)
-      .slice(0, 20);
+      .slice(0, 12);
 
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "external_search_v2_sitemap_crawler",
+      mode: "external_search_v3_curated_sources_table_parser",
       total: results.length,
       results
     });
@@ -96,19 +165,20 @@ async function searchSource(source, query) {
 
   urls = unique(urls)
     .filter(url => isAllowedUrl(url, source.domain))
+    .filter(url => !isBlockedUrl(url))
+    .filter(url => isPropertyLikeUrl(url, source))
     .slice(0, MAX_URLS_PER_SOURCE);
 
   const urlMatches = urls
     .map(url => ({
       url,
-      urlScore: scoreText(url, tokens)
+      urlScore: scoreUrl(url, tokens, source)
     }))
-    .filter(item => item.urlScore > 0)
+    .filter(item => item.urlScore > 0 || source.type === "trusted_core")
     .sort((a, b) => b.urlScore - a.urlScore);
 
-  const candidates = urlMatches.length
-    ? urlMatches.slice(0, MAX_PAGE_FETCHES_PER_SOURCE)
-    : urls.slice(0, Math.min(6, MAX_PAGE_FETCHES_PER_SOURCE)).map(url => ({ url, urlScore: 0 }));
+  const candidates = urlMatches
+    .slice(0, MAX_PAGE_FETCHES_PER_SOURCE);
 
   const pages = await Promise.all(
     candidates.map(candidate => fetchPageResult(source, candidate.url, query, tokens, candidate.urlScore))
@@ -146,16 +216,18 @@ async function readSitemapRecursive(sitemapUrl, source, visited, depth) {
   if (!xml) return [];
 
   const locs = extractLocs(xml);
-
   if (!locs.length) return [];
 
-  const nestedSitemaps = locs.filter(url => /sitemap/i.test(url)).slice(0, 5);
+  const nestedSitemaps = locs
+    .filter(url => /sitemap/i.test(url))
+    .filter(url => isAllowedUrl(url, source.domain))
+    .slice(0, 5);
+
   const pageUrls = locs.filter(url => !/sitemap/i.test(url));
 
   const all = [...pageUrls];
 
   for (const nested of nestedSitemaps) {
-    if (!isAllowedUrl(nested, source.domain)) continue;
     const nestedUrls = await readSitemapRecursive(nested, source, visited, depth + 1);
     all.push(...nestedUrls);
   }
@@ -183,43 +255,127 @@ async function fallbackHomepageLinks(source) {
 
 async function fetchPageResult(source, url, query, tokens, urlScore) {
   const html = await fetchText(url);
+
   if (!html) {
-    return {
-      title: cleanTitleFromUrl(url),
-      url,
-      image: "",
-      excerpt: "",
-      source: source.name,
-      source_domain: source.domain,
-      type: "external_page",
-      score: urlScore + source.priority / 100
-    };
+    return null;
   }
 
   const title = extractTitle(html) || cleanTitleFromUrl(url);
   const description = extractMeta(html, "description");
   const image = extractImage(html);
-  const clean = stripHtml(html).slice(0, 5000);
+  const clean = stripHtml(html).slice(0, 7000);
+  const tableText = extractTableText(html);
+
+  const titleScore = scoreText(title, tokens) * 4;
+  const descScore = scoreText(description, tokens) * 3;
+  const bodyScore = scoreText(clean, tokens);
+  const tableScore = scoreText(tableText, tokens) * 4;
+
+  const newHomeBoost = source.type === "trusted_core" ? 35 : 0;
+  const tableBoost = tableText ? 18 : 0;
+  const sourceBoost = source.priority / 10;
 
   const score =
     urlScore +
-    scoreText(title, tokens) * 3 +
-    scoreText(description, tokens) * 2 +
-    scoreText(clean, tokens) +
-    source.priority / 100;
+    titleScore +
+    descScore +
+    bodyScore +
+    tableScore +
+    tableBoost +
+    newHomeBoost +
+    sourceBoost;
 
   if (score <= 0) return null;
+
+  const tableSummary = tableText ? summarizeTableText(tableText, tokens) : "";
 
   return {
     title,
     url,
     image,
-    excerpt: description || makeExcerpt(clean, tokens),
+    excerpt: tableSummary || description || makeExcerpt(clean, tokens),
     source: source.name,
     source_domain: source.domain,
-    type: "external_page",
+    source_type: source.type,
+    type: tableText ? "external_page_with_table" : "external_page",
+    has_table: Boolean(tableText),
     score: Math.round(score * 10) / 10
   };
+}
+
+function extractTableText(html) {
+  const tables = [];
+  const tableRegex = /<table[\s\S]*?<\/table>/gi;
+  let match;
+
+  while ((match = tableRegex.exec(html)) !== null) {
+    const text = stripHtml(match[0]);
+    if (
+      /€|eur|евро|цена|price|площ|area|кв|m2|апартамент|студио|спалн|етаж|floor/i.test(text)
+    ) {
+      tables.push(text);
+    }
+  }
+
+  return tables.join(" ").slice(0, 5000);
+}
+
+function summarizeTableText(tableText, tokens) {
+  const text = tableText.replace(/\s+/g, " ").trim();
+
+  for (const token of tokens) {
+    const index = text.toLowerCase().indexOf(token);
+    if (index >= 0) {
+      const start = Math.max(0, index - 120);
+      const end = Math.min(text.length, index + 260);
+      return "Намерена е информация в ценова таблица: " + text.slice(start, end).trim();
+    }
+  }
+
+  return "Намерена е ценова таблица или информация за имоти в тази страница.";
+}
+
+function isBlockedUrl(url) {
+  const lower = url.toLowerCase();
+  return BLOCKED_URL_PARTS.some(part => lower.includes(part));
+}
+
+function isPropertyLikeUrl(url, source) {
+  const lower = url.toLowerCase();
+
+  if (source.type === "trusted_core") {
+    return PROPERTY_URL_HINTS.some(hint => lower.includes(hint));
+  }
+
+  if (
+    source.domain === "alo.bg" ||
+    source.domain === "imot.bg" ||
+    source.domain === "realistimo.com"
+  ) {
+    return (
+      PROPERTY_URL_HINTS.some(hint => lower.includes(hint)) ||
+      /\/obiavi\/|\/properties\/|\/imoti\/|\/prodava\//i.test(lower)
+    );
+  }
+
+  return PROPERTY_URL_HINTS.some(hint => lower.includes(hint));
+}
+
+function scoreUrl(url, tokens, source) {
+  const lower = normalize(url);
+  let score = 0;
+
+  for (const token of tokens) {
+    if (lower.includes(token)) score += 10;
+  }
+
+  if (source.type === "trusted_core") score += 20;
+
+  if (/listing|apartament|prodazhba|imot|kompleks|resort|residence/i.test(url)) {
+    score += 12;
+  }
+
+  return score;
 }
 
 async function fetchText(url) {
@@ -305,7 +461,25 @@ function tokenize(text) {
     .split(/\s+/)
     .map(token => token.trim())
     .filter(token => token.length >= 2)
-    .filter(token => !["апартамент", "имот", "евро", "кв", "квм", "стаи", "стая", "до", "от", "за", "във", "в"].includes(token));
+    .filter(token => ![
+      "апартамент",
+      "апартаменти",
+      "имот",
+      "имоти",
+      "евро",
+      "кв",
+      "квм",
+      "m2",
+      "стаи",
+      "стая",
+      "до",
+      "от",
+      "за",
+      "във",
+      "в",
+      "на",
+      "и"
+    ].includes(token));
 }
 
 function normalize(text) {
