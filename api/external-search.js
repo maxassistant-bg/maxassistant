@@ -30,22 +30,6 @@ const SOURCES = [
     type: "trusted_portal",
     enabled: true,
     priority: 160
-  },
-  {
-    name: "Vista Verde",
-    domain: "lavistaverde.eu",
-    baseUrl: "https://www.lavistaverde.eu",
-    type: "trusted_developer",
-    enabled: true,
-    priority: 130
-  },
-  {
-    name: "Green Life",
-    domain: "greenlife.bg",
-    baseUrl: "https://greenlife.bg",
-    type: "trusted_developer",
-    enabled: true,
-    priority: 120
   }
 ];
 
@@ -370,9 +354,6 @@ function buildMatchReason({ source, detectedLocations, hasTable, image, title, d
     reasons.push("резултатът е от NewHome Bulgaria, който е основният доверен източник");
   } else if (source.type === "trusted_portal") {
     reasons.push("резултатът е от доверен външен портал");
-  } else if (source.type === "trusted_developer") {
-    reasons.push("резултатът е от доверен сайт на инвеститор");
-  }
 
   if (detectedLocations.length) {
     reasons.push("съвпада със зададената локация: " + detectedLocations.map(item => item.canonical).join(", "));
