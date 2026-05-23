@@ -4,30 +4,53 @@
     "url": "https://newhomebulgaria.com",
     "type": "agency",
     "priority": 100,
-    "enabled": true
+    "enabled": true,
+    "search_enabled": true,
+    "live_search": true,
+    "notes": "Основен AI source за MaxAssistant"
   },
 
   {
     "name": "Vista Verde",
     "url": "https://www.lavistaverde.eu",
     "type": "developer",
-    "priority": 80,
-    "enabled": true
+    "priority": 90,
+    "enabled": true,
+    "search_enabled": true,
+    "live_search": true,
+    "notes": "Developer source"
+  },
+
+  {
+    "name": "Dinevi Resort",
+    "url": "https://dineviresort.bg",
+    "type": "developer",
+    "priority": 85,
+    "enabled": true,
+    "search_enabled": true,
+    "live_search": true,
+    "notes": "Свети Влас / Dinevi Group"
   },
 
   {
     "name": "Green Life",
     "url": "https://greenlife.bg",
     "type": "developer",
-    "priority": 80,
-    "enabled": true
+    "priority": 85,
+    "enabled": true,
+    "search_enabled": true,
+    "live_search": true,
+    "notes": "Green Life Resorts"
   },
 
   {
-    "name": "Dinevi Group",
-    "url": "https://dinevigroup.bg",
-    "type": "developer",
-    "priority": 80,
-    "enabled": true
+    "name": "Imoti.bg",
+    "url": "https://www.imoti.bg",
+    "type": "portal",
+    "priority": 70,
+    "enabled": false,
+    "search_enabled": false,
+    "live_search": false,
+    "notes": "Ще бъде активиран на по-късен етап"
   }
 ]
