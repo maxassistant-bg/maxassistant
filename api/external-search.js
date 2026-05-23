@@ -35,15 +35,15 @@ const SOURCES = [
 
 const KNOWN_LOCATIONS = [
   { canonical: "созопол", latin: "sozopol", aliases: ["созопол", "sozopol"], aloLocationId: "490", aloRegionId: "2" },
-  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"] },
-  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"] },
-  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"] },
-  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"] },
-  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"] },
-  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"] },
-  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"] },
-  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"] },
-  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo"] }
+  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"], aloRegionId: "2" },
+  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"], aloRegionId: "2" },
+  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"], aloRegionId: "2" },
+  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"], aloRegionId: "2" },
+  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"], aloRegionId: "2" },
+  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"], aloRegionId: "2" },
+  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"], aloRegionId: "2" },
+  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"], aloRegionId: "2" },
+  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo"], aloRegionId: "2" }
 ];
 
 const PROPERTY_TYPE_RULES = [
@@ -315,11 +315,7 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   const encodedLatin = encodeURIComponent(latinQuery);
 
   if (source.domain === "alo.bg") {
-    const urls = [
-      `https://www.alo.bg/searchq/?q=${encodedBg}`,
-      `https://www.alo.bg/searchq/?q=${encodedLatin}`,
-      `https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?q=${encodedBg}`
-    ];
+    const urls = [];
 
     if (location && location.aloLocationId && location.aloRegionId) {
       let structured = `https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?location_ids=${location.aloLocationId}&region_id=${location.aloRegionId}&order_by=price-asc`;
@@ -328,8 +324,17 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
         structured += `&p[413]=${propertyType.aloTypeId}`;
       }
 
-      urls.unshift(structured);
+      urls.push(structured);
     }
+
+    if (location && location.aloRegionId) {
+      urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?region_id=${location.aloRegionId}&q=${encodedBg}&order_by=price-asc`);
+      urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?region_id=${location.aloRegionId}&q=${encodedLatin}&order_by=price-asc`);
+    }
+
+    urls.push(`https://www.alo.bg/searchq/?q=${encodedBg}`);
+    urls.push(`https://www.alo.bg/searchq/?q=${encodedLatin}`);
+    urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?q=${encodedBg}`);
 
     return unique(urls);
   }
@@ -675,7 +680,7 @@ function isConcreteListingUrl(url, source) {
   }
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
   }
 
   if (source.domain === "imot.bg") {
@@ -793,7 +798,7 @@ function isLikelyListingUrl(url, source) {
   const lower = url.toLowerCase();
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
   }
 
   if (source.domain === "imot.bg") {
