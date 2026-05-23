@@ -567,6 +567,12 @@ async function searchExternalSources(query) {
                   <p>${result.excerpt}</p>
                 ` : ""}
 
+                ${result.match_reason ? `
+                  <p class="external-match-reason">
+                    <strong>Защо MaxAssistant го показва:</strong> ${result.match_reason}
+                  </p>
+                ` : ""}
+
                 <a href="${result.url}" target="_blank" class="button external-result-link">
                   Отвори
                 </a>
