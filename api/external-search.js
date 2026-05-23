@@ -1,5 +1,13 @@
 const SOURCES = [
   {
+    name: "NewHome Bulgaria",
+    domain: "newhomebulgaria.com",
+    baseUrl: "https://newhomebulgaria.com",
+    type: "trusted_site_discovery",
+    enabled: true,
+    priority: 300
+  },
+  {
     name: "Alo.bg",
     domain: "alo.bg",
     baseUrl: "https://www.alo.bg",
@@ -32,154 +40,52 @@ const SITEMAP_PATHS = [
 ];
 
 const KNOWN_LOCATIONS = [
-  {
-    canonical: "созопол",
-    aliases: ["созопол", "sozopol"]
-  },
-  {
-    canonical: "слънчев бряг",
-    aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"]
-  },
-  {
-    canonical: "свети влас",
-    aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"]
-  },
-  {
-    canonical: "бургас",
-    aliases: ["бургас", "burgas"]
-  },
-  {
-    canonical: "черноморец",
-    aliases: ["черноморец", "chernomorets"]
-  },
-  {
-    canonical: "поморие",
-    aliases: ["поморие", "pomorie"]
-  },
-  {
-    canonical: "равда",
-    aliases: ["равда", "ravda"]
-  },
-  {
-    canonical: "несебър",
-    aliases: ["несебър", "nesebar", "nessebar"]
-  },
-  {
-    canonical: "лозенец",
-    aliases: ["лозенец", "lozenets"]
-  },
-  {
-    canonical: "царево",
-    aliases: ["царево", "tsarevo"]
-  }
+  { canonical: "созопол", aliases: ["созопол", "sozopol"] },
+  { canonical: "слънчев бряг", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"] },
+  { canonical: "свети влас", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"] },
+  { canonical: "бургас", aliases: ["бургас", "burgas"] },
+  { canonical: "черноморец", aliases: ["черноморец", "chernomorets"] },
+  { canonical: "поморие", aliases: ["поморие", "pomorie"] },
+  { canonical: "равда", aliases: ["равда", "ravda"] },
+  { canonical: "несебър", aliases: ["несебър", "nesebar", "nessebar"] },
+  { canonical: "лозенец", aliases: ["лозенец", "lozenets"] },
+  { canonical: "царево", aliases: ["царево", "tsarevo"] }
 ];
 
 const BLOCKED_URL_PARTS = [
-  ".css",
-  ".js",
-  ".json",
-  ".woff",
-  ".woff2",
-  ".ttf",
-  ".eot",
-  ".svg",
-  "/wp-content/",
-  "/wp-includes/",
-  "/wp-json/",
-  "/feed/",
-  "/comments/",
-  "/trackback/",
-  "/xmlrpc",
-  "translate",
-  "plugins",
-  "themes",
-  "fonts",
-  "admin",
-  "login",
-  "author",
-  "tag/",
-  "category/",
-  "cart",
-  "checkout",
-  "privacy",
-  "cookie",
-  "terms",
-  "obshti-usloviya"
+  ".css", ".js", ".json", ".woff", ".woff2", ".ttf", ".eot", ".svg",
+  "/wp-content/", "/wp-includes/", "/wp-json/", "/feed/", "/comments/",
+  "/trackback/", "/xmlrpc", "translate", "plugins", "themes", "fonts",
+  "admin", "login", "author", "tag/", "cart", "checkout",
+  "privacy", "cookie", "terms", "obshti-usloviya"
 ];
 
 const GENERIC_PAGE_HINTS = [
-  "начало",
-  "контакти",
-  "за нас",
-  "услуги",
-  "политика",
-  "cookie",
-  "privacy",
-  "terms",
-  "общи условия",
-  "помощ",
-  "карта на сайта"
+  "начало", "контакти", "за нас", "услуги", "политика", "cookie",
+  "privacy", "terms", "общи условия", "помощ", "карта на сайта"
 ];
 
 const PROPERTY_URL_HINTS = [
-  "imot",
-  "imoti",
-  "apartament",
-  "apartamenti",
-  "apartment",
-  "property",
-  "properties",
-  "prodava",
-  "prodazhba",
-  "obiavi",
-  "listing",
-  "nedvizhimi",
-  "real-estate",
-  "studio",
-  "residence",
-  "resort",
-  "sozopol",
-  "slanchev",
-  "sunny",
-  "burgas",
-  "chernomorets",
-  "sveti-vlas",
-  "vlas",
-  "pomorie",
-  "ravda",
-  "nesebar",
-  "lozenets",
-  "tsarevo"
+  "listing", "imot", "imoti", "apartament", "apartamenti", "apartment",
+  "property", "properties", "prodava", "prodazhba", "obiavi",
+  "nedvizhimi", "real-estate", "studio", "residence", "resort",
+  "kompleks", "complex", "green-life", "cascadas", "city-residence",
+  "vista-verde", "kasa-blanka", "sozopol", "slanchev", "sunny",
+  "burgas", "chernomorets", "sveti-vlas", "vlas", "pomorie",
+  "ravda", "nesebar", "lozenets", "tsarevo"
 ];
 
 const PROPERTY_TEXT_HINTS = [
-  "€",
-  "eur",
-  "евро",
-  "цена",
-  "кв.м",
-  "кв м",
-  "m2",
-  "m²",
-  "площ",
-  "апартамент",
-  "студио",
-  "спалня",
-  "спални",
-  "стаи",
-  "етаж",
-  "акт 16",
-  "такса поддръжка",
-  "обзаведен",
-  "необзаведен",
-  "до ключ",
-  "продажба"
+  "€", "eur", "евро", "цена", "кв.м", "кв м", "m2", "m²",
+  "площ", "апартамент", "студио", "спалня", "спални", "стаи",
+  "етаж", "акт 16", "такса поддръжка", "обзаведен",
+  "необзаведен", "до ключ", "продажба"
 ];
 
-const MAX_SITEMAPS_PER_SOURCE = 6;
-const MAX_URLS_PER_SOURCE = 60;
-const MAX_PAGE_FETCHES_PER_SOURCE = 8;
-const MAX_RESULTS = 6;
+const MAX_SITEMAPS_PER_SOURCE = 8;
+const MAX_URLS_PER_SOURCE = 90;
+const MAX_PAGE_FETCHES_PER_SOURCE = 12;
+const MAX_RESULTS = 8;
 const REQUEST_TIMEOUT_MS = 7000;
 const MIN_REAL_PROPERTY_SCORE = 45;
 
@@ -190,7 +96,8 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      checked_sources: []
+      checked_sources: [],
+      results: []
     });
   }
 
@@ -206,6 +113,7 @@ module.exports = async function handler(req, res) {
       const sourceDiagnostics = {
         source: source.name,
         domain: source.domain,
+        type: source.type,
         status: "started",
         discovered_urls: 0,
         checked_pages: 0,
@@ -243,8 +151,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "external_discovery_v2_approved_sources_only",
-      philosophy: "external sources are secondary discovery opportunities; NewHome local database remains primary trusted source",
+      mode: "external_discovery_v3_newhome_trusted_site_plus_approved_portals",
+      philosophy: "NewHome site discovery is trusted secondary source after local JSON; portals are external opportunities only",
       detected_locations: detectedLocations.map(location => location.canonical),
       checked_sources: diagnostics,
       total: results.length,
@@ -283,9 +191,9 @@ async function searchSource(source, query, detectedLocations, diagnostics) {
       url,
       urlScore: scoreUrl(url, tokens, source, detectedLocations)
     }))
-    .filter(item => item.urlScore > 0)
+    .filter(item => item.urlScore > 0 || source.type === "trusted_site_discovery")
     .sort((a, b) => b.urlScore - a.urlScore)
-    .slice(0, MAX_PAGE_FETCHES_PER_SOURCE);
+    .slice(0, source.type === "trusted_site_discovery" ? MAX_PAGE_FETCHES_PER_SOURCE : 7);
 
   diagnostics.checked_pages = urlMatches.length;
 
@@ -335,7 +243,7 @@ async function readSitemapRecursive(sitemapUrl, source, visited, depth) {
   const nestedSitemaps = locs
     .filter(url => /sitemap/i.test(url))
     .filter(url => isAllowedUrl(url, source.domain))
-    .slice(0, 5);
+    .slice(0, 6);
 
   const pageUrls = locs.filter(url => !/sitemap/i.test(url));
   const all = [...pageUrls];
@@ -382,7 +290,7 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
     description,
     url,
     tableText,
-    clean.slice(0, 1400)
+    clean.slice(0, 1800)
   ].join(" ");
 
   if (detectedLocations.length && !matchesDetectedLocation(locationTextForMatch, detectedLocations)) {
@@ -395,6 +303,7 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
   const tableScore = scoreText(tableText, tokens) * 5;
   const propertySignalScore = scorePropertySignals(title + " " + description + " " + clean + " " + tableText);
   const genericPenalty = isGenericPage(title, description, url) ? -100 : 0;
+  const trustedNewHomeBoost = source.type === "trusted_site_discovery" ? 45 : 0;
   const tableBoost = tableText ? 25 : 0;
   const sourceBoost = source.priority / 10;
   const exactLocationBoost = detectedLocations.length ? 25 : 0;
@@ -407,6 +316,7 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
     tableScore +
     propertySignalScore +
     genericPenalty +
+    trustedNewHomeBoost +
     tableBoost +
     sourceBoost +
     exactLocationBoost;
@@ -419,7 +329,8 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
     tableText,
     score,
     tokens,
-    detectedLocations
+    detectedLocations,
+    source
   });
 
   if (!realProperty) return null;
@@ -436,7 +347,9 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
     source_domain: source.domain,
     source_type: source.type,
     source_priority: source.priority,
-    type: tableText ? "external_opportunity_with_table" : "external_opportunity",
+    type: source.type === "trusted_site_discovery"
+      ? "newhome_trusted_site_result"
+      : (tableText ? "external_opportunity_with_table" : "external_opportunity"),
     has_table: Boolean(tableText),
     real_property_match: true,
     match_reason: buildMatchReason({
@@ -456,7 +369,9 @@ async function fetchPageResult(source, url, query, tokens, detectedLocations, ur
 function buildMatchReason({ source, detectedLocations, hasTable, image, title, description, clean, tokens }) {
   const reasons = [];
 
-  if (source.type === "trusted_portal") {
+  if (source.type === "trusted_site_discovery") {
+    reasons.push("резултатът е от NewHome Bulgaria като доверен site discovery layer");
+  } else if (source.type === "trusted_portal") {
     reasons.push("резултатът е от одобрен външен портал");
   }
 
@@ -493,9 +408,9 @@ function buildMatchReason({ source, detectedLocations, hasTable, image, title, d
   return reasons.slice(0, 4).join("; ");
 }
 
-function isRealPropertyResult({ title, description, url, clean, tableText, score, tokens, detectedLocations }) {
+function isRealPropertyResult({ title, description, url, clean, tableText, score, tokens, detectedLocations, source }) {
   const allForProperty = normalize(title + " " + description + " " + url + " " + clean + " " + tableText);
-  const allForLocation = normalize(title + " " + description + " " + url + " " + tableText + " " + clean.slice(0, 1400));
+  const allForLocation = normalize(title + " " + description + " " + url + " " + tableText + " " + clean.slice(0, 1800));
 
   if (isGenericPage(title, description, url)) return false;
 
@@ -508,6 +423,10 @@ function isRealPropertyResult({ title, description, url, clean, tableText, score
   const hasArea = /кв\.?м|кв м|m2|m²|площ/i.test(allForProperty);
   const hasPropertyWord = /апартамент|студио|спалн|имот|жилищ|етаж|комплекс|сграда|продажба/i.test(allForProperty);
   const hasTable = Boolean(tableText);
+
+  if (source.type === "trusted_site_discovery") {
+    return hasPropertyWord && (hasQueryMatch || hasPrice || hasArea || hasTable) && score >= MIN_REAL_PROPERTY_SCORE;
+  }
 
   return hasQueryMatch && hasPropertyWord && (hasPrice || hasArea || hasTable) && score >= MIN_REAL_PROPERTY_SCORE;
 }
@@ -601,6 +520,10 @@ function isPropertyLikeUrl(url, source) {
     return true;
   }
 
+  if (source.type === "trusted_site_discovery") {
+    return /listing|apartament|imot|nedvizhimi|prodazhba|kompleks|resort|residence|green-life|cascadas|city-residence|vista-verde|kasa-blanka/i.test(lower);
+  }
+
   if (source.domain === "alo.bg") {
     return /\/obiavi\/|\/imoti\/|prodava|apartament|studio/i.test(lower);
   }
@@ -630,8 +553,12 @@ function scoreUrl(url, tokens, source, detectedLocations) {
     score += 30;
   }
 
-  if (/listing|apartament|prodazhba|imot|property|properties|obiavi|prodava|buy/i.test(url)) {
+  if (/listing|apartament|prodazhba|imot|property|properties|obiavi|prodava|buy|kompleks|resort|residence/i.test(url)) {
     score += 18;
+  }
+
+  if (source.type === "trusted_site_discovery") {
+    score += 22;
   }
 
   score += source.priority / 20;
@@ -777,27 +704,9 @@ function tokenize(text, detectedLocations = []) {
     .map(token => token.trim())
     .filter(token => token.length >= 2)
     .filter(token => ![
-      "апартамент",
-      "апартаменти",
-      "имот",
-      "имоти",
-      "евро",
-      "eur",
-      "кв",
-      "квм",
-      "m2",
-      "m²",
-      "стаи",
-      "стая",
-      "до",
-      "от",
-      "за",
-      "във",
-      "в",
-      "на",
-      "и",
-      "с",
-      "по"
+      "апартамент", "апартаменти", "имот", "имоти", "евро", "eur",
+      "кв", "квм", "m2", "m²", "стаи", "стая", "до", "от",
+      "за", "във", "в", "на", "и", "с", "по"
     ].includes(token))
     .filter(token => !locationAliases.includes(token));
 }
