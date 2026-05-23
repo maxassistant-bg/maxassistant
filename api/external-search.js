@@ -1,5 +1,13 @@
 const SOURCES = [
   {
+    name: "NewHome Bulgaria",
+    domain: "newhomebulgaria.com",
+    baseUrl: "https://newhomebulgaria.com",
+    type: "trusted_site_discovery",
+    enabled: true,
+    priority: 300
+  },
+  {
     name: "Alo.bg",
     domain: "alo.bg",
     baseUrl: "https://www.alo.bg",
@@ -41,30 +49,42 @@ const KNOWN_LOCATIONS = [
 const PROPERTY_TYPE_RULES = [
   {
     canonical: "студио",
-    aliases: ["студио", "studio", "едностаен", "1 стая"],
-    searchTerms: ["студио", "studio"]
+    rooms: 1,
+    aliases: ["студио", "studio", "едностаен", "1 стая", "1стаен"],
+    searchTerms: ["студио", "studio", "едностаен"]
   },
   {
     canonical: "една спалня",
+    rooms: 2,
     aliases: ["една спалня", "1 спалня", "двустаен", "две стаи", "2 стаи", "one bedroom"],
-    searchTerms: ["една спалня", "двустаен", "one bedroom"]
+    searchTerms: ["двустаен", "една спалня", "one bedroom"]
   },
   {
     canonical: "две спални",
+    rooms: 3,
     aliases: ["две спални", "2 спални", "тристаен", "три стаи", "3 стаи", "two bedroom"],
-    searchTerms: ["две спални", "тристаен", "two bedroom"]
+    searchTerms: ["тристаен", "две спални", "two bedroom"]
   },
   {
     canonical: "три спални",
+    rooms: 4,
     aliases: ["три спални", "3 спални", "четиристаен", "4 стаи"],
-    searchTerms: ["три спални", "четиристаен"]
+    searchTerms: ["четиристаен", "три спални"]
   }
 ];
 
+const NEW_HOME_SITEMAPS = [
+  "/sitemap.xml",
+  "/sitemap_index.xml",
+  "/wp-sitemap.xml"
+];
+
 const REQUEST_TIMEOUT_MS = 9000;
-const MAX_RESULTS = 8;
-const MAX_SEARCH_PAGES_PER_SOURCE = 3;
-const MIN_SCORE = 28;
+const MAX_RESULTS = 9;
+const MAX_PORTAL_SEARCH_PAGES = 3;
+const MAX_NEWHOME_FETCHES = 16;
+const MIN_NEWHOME_SCORE = 42;
+const MIN_PORTAL_SCORE = 55;
 
 module.exports = async function handler(req, res) {
   const q = String(req.query.q || "").trim();
@@ -73,7 +93,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "portal_search_v1",
+      mode: "external_discovery_v5",
       results: []
     });
   }
@@ -90,9 +110,11 @@ module.exports = async function handler(req, res) {
       const sourceDiagnostics = {
         source: source.name,
         domain: source.domain,
-        mode: "portal_search",
+        type: source.type,
+        mode: source.type === "trusted_site_discovery" ? "newhome_site_discovery" : "portal_search",
         generated_search_urls: 0,
-        fetched_search_pages: 0,
+        discovered_urls: 0,
+        fetched_pages: 0,
         extracted_candidates: 0,
         accepted_results: 0,
         status: "started",
@@ -100,7 +122,10 @@ module.exports = async function handler(req, res) {
       };
 
       try {
-        const sourceResults = await searchPortalSource(source, q, queryIntent, sourceDiagnostics);
+        const sourceResults = source.type === "trusted_site_discovery"
+          ? await searchNewHomeTrustedSite(source, q, queryIntent, sourceDiagnostics)
+          : await searchPortalSource(source, q, queryIntent, sourceDiagnostics);
+
         allResults.push(...sourceResults);
 
         sourceDiagnostics.accepted_results = sourceResults.length;
@@ -115,16 +140,19 @@ module.exports = async function handler(req, res) {
 
     const results = deduplicateResults(allResults)
       .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return b.source_priority - a.source_priority;
+        if (b.source_priority !== a.source_priority) {
+          return b.source_priority - a.source_priority;
+        }
+
+        return b.score - a.score;
       })
       .slice(0, MAX_RESULTS);
 
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "portal_search_v1_real_market_discovery",
-      philosophy: "External portals are searched as market discovery only. NewHome local database remains primary trusted source.",
+      mode: "external_discovery_v5_newhome_plus_strict_portal_listings",
+      philosophy: "NewHome site discovery is trusted. Portals are strict external opportunities and must look like real listing candidates.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
       budget: queryIntent.budget,
@@ -136,48 +164,287 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      message: "Portal search failed",
+      message: "External discovery failed",
       error: error.message,
-      mode: "portal_search_v1",
+      mode: "external_discovery_v5",
       checked_sources: diagnostics,
       results: []
     });
   }
 };
 
+/* =========================
+   NEWHOME TRUSTED SITE DISCOVERY
+========================= */
+
+async function searchNewHomeTrustedSite(source, originalQuery, queryIntent, diagnostics) {
+  const urls = await discoverNewHomeUrls(source);
+  diagnostics.discovered_urls = urls.length;
+
+  const rankedUrls = urls
+    .filter(url => isAllowedUrl(url, source.domain))
+    .filter(url => !isBlockedUrl(url))
+    .filter(url => isNewHomeRelevantUrl(url, queryIntent))
+    .map(url => ({
+      url,
+      score: scoreNewHomeUrl(url, queryIntent)
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_NEWHOME_FETCHES);
+
+  diagnostics.fetched_pages = rankedUrls.length;
+
+  const pages = await Promise.all(
+    rankedUrls.map(item =>
+      fetchNewHomePageResult(source, item.url, queryIntent, item.score)
+    )
+  );
+
+  const results = pages
+    .filter(Boolean)
+    .filter(item => item.score >= MIN_NEWHOME_SCORE)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  diagnostics.extracted_candidates = pages.filter(Boolean).length;
+
+  return results;
+}
+
+async function discoverNewHomeUrls(source) {
+  const found = [];
+  const visited = new Set();
+
+  for (const path of NEW_HOME_SITEMAPS) {
+    const sitemapUrl = source.baseUrl.replace(/\/$/, "") + path;
+    const urls = await readSitemapRecursive(sitemapUrl, source, visited, 0);
+
+    found.push(...urls);
+
+    if (found.length >= 180) break;
+  }
+
+  return unique(found).slice(0, 180);
+}
+
+async function readSitemapRecursive(sitemapUrl, source, visited, depth) {
+  if (visited.has(sitemapUrl)) return [];
+  if (visited.size > 12) return [];
+  if (depth > 2) return [];
+
+  visited.add(sitemapUrl);
+
+  const xml = await fetchText(sitemapUrl);
+  if (!xml) return [];
+
+  const locs = extractLocs(xml);
+  if (!locs.length) return [];
+
+  const nested = locs
+    .filter(url => /sitemap/i.test(url))
+    .filter(url => isAllowedUrl(url, source.domain))
+    .slice(0, 8);
+
+  const pageUrls = locs.filter(url => !/sitemap/i.test(url));
+  const all = [...pageUrls];
+
+  for (const nestedUrl of nested) {
+    const nestedUrls = await readSitemapRecursive(nestedUrl, source, visited, depth + 1);
+    all.push(...nestedUrls);
+  }
+
+  return unique(all);
+}
+
+async function fetchNewHomePageResult(source, url, queryIntent, urlScore) {
+  const html = await fetchText(url);
+  if (!html) return null;
+
+  const title = extractTitle(html) || cleanTitleFromUrl(url);
+  const description = extractMeta(html, "description");
+  const image = extractImage(html, url);
+  const clean = stripHtml(html).slice(0, 9000);
+  const tableText = extractTableText(html);
+
+  const scored = scoreTrustedSiteText({
+    title,
+    description,
+    url,
+    clean,
+    tableText,
+    queryIntent,
+    baseScore: urlScore
+  });
+
+  if (scored.score < MIN_NEWHOME_SCORE) return null;
+
+  return {
+    title,
+    url,
+    image,
+    excerpt: tableText ? summarizeTableText(tableText, queryIntent) : makeExcerpt(clean || description, queryIntent),
+    source: source.name,
+    source_domain: source.domain,
+    source_type: source.type,
+    source_priority: source.priority,
+    type: "newhome_trusted_site_result",
+    real_property_match: true,
+    has_table: Boolean(tableText),
+    match_reason: scored.reasons.slice(0, 5).join("; "),
+    score: Math.round(scored.score * 10) / 10
+  };
+}
+
+function scoreTrustedSiteText({ title, description, url, clean, tableText, queryIntent, baseScore }) {
+  const allText = normalize([title, description, url, clean, tableText].join(" "));
+  let score = baseScore + 35;
+  const reasons = ["резултатът е от NewHome Bulgaria като доверен site discovery layer"];
+
+  if (queryIntent.location) {
+    const hasLocation = queryIntent.location.aliases.some(alias =>
+      allText.includes(normalize(alias))
+    );
+
+    if (hasLocation) {
+      score += 35;
+      reasons.push("съвпада със зададената локация: " + queryIntent.location.canonical);
+    } else {
+      score -= 30;
+      reasons.push("локацията не е ясно потвърдена");
+    }
+  }
+
+  if (queryIntent.propertyType) {
+    const hasType = queryIntent.propertyType.aliases.some(alias =>
+      allText.includes(normalize(alias))
+    );
+
+    if (hasType) {
+      score += 24;
+      reasons.push("има съвпадение с типа имот: " + queryIntent.propertyType.canonical);
+    } else if (hasGeneralApartmentSignal(allText)) {
+      score += 8;
+      reasons.push("има общ имотен сигнал, но типът не е напълно потвърден");
+    }
+  }
+
+  if (queryIntent.budget) {
+    const price = extractPrice(allText);
+
+    if (price) {
+      if (price <= queryIntent.budget) {
+        score += 20;
+        reasons.push("откритата цена изглежда в рамките на бюджета");
+      } else {
+        score -= 18;
+        reasons.push("откритата цена може да е над бюджета");
+      }
+    }
+  }
+
+  if (tableText) {
+    score += 20;
+    reasons.push("има ценова таблица или структурирана информация");
+  }
+
+  if (/€|eur|евро/.test(allText)) {
+    score += 10;
+    reasons.push("има данни за цена");
+  }
+
+  if (/кв м|кв\.м|m2|m²|площ/.test(allText)) {
+    score += 10;
+    reasons.push("има данни за площ");
+  }
+
+  if (!hasGeneralApartmentSignal(allText)) {
+    score -= 35;
+  }
+
+  return { score, reasons };
+}
+
+function isNewHomeRelevantUrl(url, queryIntent) {
+  const lower = normalize(url);
+
+  if (isGenericUrl(url)) return false;
+
+  const propertyLike = /listing|apartament|apartamenti|imot|nedvizhimi|prodazhba|kompleks|resort|residence|green-life|cascadas|city-residence|vista-verde|kasa-blanka|santa-marina/i.test(url);
+
+  if (!propertyLike) return false;
+
+  if (queryIntent.location) {
+    const locationInUrl = queryIntent.location.aliases.some(alias =>
+      lower.includes(normalize(alias))
+    );
+
+    if (locationInUrl) return true;
+  }
+
+  if (queryIntent.propertyType) {
+    const typeInUrl = queryIntent.propertyType.aliases.some(alias =>
+      lower.includes(normalize(alias))
+    );
+
+    if (typeInUrl) return true;
+  }
+
+  return propertyLike;
+}
+
+function scoreNewHomeUrl(url, queryIntent) {
+  const lower = normalize(url);
+  let score = 0;
+
+  if (/listing|apartament|apartamenti|imot|prodazhba|nedvizhimi/i.test(lower)) score += 28;
+  if (/kompleks|resort|residence|green-life|cascadas|city-residence|vista-verde|kasa-blanka/i.test(lower)) score += 18;
+
+  if (queryIntent.location) {
+    if (queryIntent.location.aliases.some(alias => lower.includes(normalize(alias)))) {
+      score += 34;
+    }
+  }
+
+  if (queryIntent.propertyType) {
+    if (queryIntent.propertyType.aliases.some(alias => lower.includes(normalize(alias)))) {
+      score += 16;
+    }
+  }
+
+  return score;
+}
+
+/* =========================
+   STRICT PORTAL SEARCH
+========================= */
+
 async function searchPortalSource(source, originalQuery, queryIntent, diagnostics) {
   const searchUrls = buildPortalSearchUrls(source, originalQuery, queryIntent);
-
   diagnostics.generated_search_urls = searchUrls.length;
 
   const pages = [];
 
-  for (const url of searchUrls.slice(0, MAX_SEARCH_PAGES_PER_SOURCE)) {
+  for (const url of searchUrls.slice(0, MAX_PORTAL_SEARCH_PAGES)) {
     const html = await fetchText(url);
-
-    diagnostics.fetched_search_pages += html ? 1 : 0;
 
     if (!html) continue;
 
-    pages.push({
-      url,
-      html
-    });
+    diagnostics.fetched_pages += 1;
+
+    pages.push({ url, html });
   }
 
   const candidates = [];
 
   for (const page of pages) {
-    const extracted = extractCandidatesFromSearchPage(source, page.html, page.url);
-
-    candidates.push(...extracted);
+    candidates.push(...extractCandidatesFromSearchPage(source, page.html, page.url, queryIntent));
   }
 
   diagnostics.extracted_candidates = candidates.length;
 
   return candidates
-    .map(candidate => scoreExternalCandidate(candidate, queryIntent, originalQuery))
-    .filter(candidate => candidate.score >= MIN_SCORE)
+    .map(candidate => scoreExternalCandidate(candidate, queryIntent))
+    .filter(candidate => candidate.score >= MIN_PORTAL_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
 }
@@ -186,33 +453,23 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   const location = queryIntent.location;
   const propertyType = queryIntent.propertyType;
 
-  const terms = [];
+  const baseTerms = [
+    location ? location.canonical : "",
+    propertyType ? propertyType.searchTerms[0] : "",
+    queryIntent.budget ? "до " + queryIntent.budget + " евро" : ""
+  ].filter(Boolean);
 
-  if (location) {
-    terms.push(location.canonical);
-  }
-
-  if (propertyType) {
-    terms.push(propertyType.searchTerms[0]);
-  }
-
-  if (queryIntent.budget) {
-    terms.push("до " + queryIntent.budget + " евро");
-  }
-
-  if (!terms.length) {
-    terms.push(originalQuery);
-  }
-
-  const bgQuery = normalizeSpaces(terms.join(" "));
-  const latinQuery = normalizeSpaces([
+  const latinTerms = [
     location ? location.latin : "",
     propertyType ? propertyType.searchTerms[propertyType.searchTerms.length - 1] : "",
     queryIntent.budget ? "up to " + queryIntent.budget + " eur" : ""
-  ].filter(Boolean).join(" "));
+  ].filter(Boolean);
+
+  const bgQuery = normalizeSpaces(baseTerms.join(" ") || originalQuery);
+  const latinQuery = normalizeSpaces(latinTerms.join(" ") || originalQuery);
 
   const encodedBg = encodeURIComponent(bgQuery);
-  const encodedLatin = encodeURIComponent(latinQuery || bgQuery);
+  const encodedLatin = encodeURIComponent(latinQuery);
 
   if (source.domain === "alo.bg") {
     return unique([
@@ -224,51 +481,50 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
 
   if (source.domain === "imot.bg") {
     return unique([
-      `https://www.imot.bg/pcgi/imot.cgi?act=3&slink=&f1=1&fe7=1&keywords=${encodedBg}`,
-      `https://www.imot.bg/pcgi/imot.cgi?act=3&slink=&f1=1&fe7=1&keywords=${encodedLatin}`,
-      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedBg}`
+      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedBg}`,
+      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedLatin}`
     ]);
   }
 
   if (source.domain === "realistimo.com") {
     return unique([
       `https://realistimo.com/bg/buy?query=${encodedBg}`,
-      `https://realistimo.com/bg/buy?query=${encodedLatin}`,
-      `https://realistimo.com/bg/properties?query=${encodedBg}`
+      `https://realistimo.com/bg/buy?query=${encodedLatin}`
     ]);
   }
 
   return [];
 }
 
-function extractCandidatesFromSearchPage(source, html, pageUrl) {
-  const candidates = [];
+function extractCandidatesFromSearchPage(source, html, pageUrl, queryIntent) {
   const anchors = extractAnchors(html, pageUrl)
     .filter(anchor => isAllowedUrl(anchor.url, source.domain))
+    .filter(anchor => !isBlockedUrl(anchor.url))
     .filter(anchor => isLikelyListingUrl(anchor.url, source))
-    .filter(anchor => !isBlockedUrl(anchor.url));
+    .filter(anchor => !isBadAnchorTitle(anchor.text));
 
-  const uniqueAnchors = deduplicateAnchors(anchors).slice(0, 24);
+  const candidates = [];
 
-  for (const anchor of uniqueAnchors) {
-    const surroundingText = extractSurroundingText(html, anchor.rawHref || anchor.href || "", anchor.text);
-    const image = extractNearbyImage(html, anchor.rawHref || anchor.href || "", pageUrl);
+  for (const anchor of deduplicateAnchors(anchors).slice(0, 40)) {
+    const chunk = extractListingChunk(html, anchor.rawHref, anchor.text);
+    const text = cleanText(stripHtml(chunk || anchor.text));
+    const title = deriveListingTitle(anchor, text);
+    const image = extractNearbyImage(chunk || html, anchor.rawHref, pageUrl);
 
-    const title = cleanText(anchor.text) || cleanTitleFromUrl(anchor.url);
-    const excerpt = cleanText(surroundingText).slice(0, 360);
-
-    if (!title || title.length < 6) continue;
+    if (!title || isBadAnchorTitle(title)) continue;
+    if (!isStrictListingCandidate(title, text, anchor.url, queryIntent)) continue;
 
     candidates.push({
       title,
       url: anchor.url,
       image,
-      excerpt,
+      excerpt: text.slice(0, 420),
       source: source.name,
       source_domain: source.domain,
       source_type: source.type,
       source_priority: source.priority,
       type: "external_portal_listing_candidate",
+      real_property_match: true,
       match_reason: "",
       score: 0
     });
@@ -277,17 +533,30 @@ function extractCandidatesFromSearchPage(source, html, pageUrl) {
   return candidates;
 }
 
-function scoreExternalCandidate(candidate, queryIntent, originalQuery) {
-  const allText = normalize([
-    candidate.title,
-    candidate.excerpt,
-    candidate.url
-  ].join(" "));
+function isStrictListingCandidate(title, text, url, queryIntent) {
+  const all = normalize([title, text, url].join(" "));
 
-  let score = 0;
+  if (isBadAnchorTitle(title)) return false;
+  if (!hasGeneralApartmentSignal(all)) return false;
+
+  const hasLocation = queryIntent.location
+    ? queryIntent.location.aliases.some(alias => all.includes(normalize(alias)))
+    : true;
+
+  const hasPrice = Boolean(extractPrice(all)) || /€|eur|евро|лв|bgn/.test(all);
+  const hasArea = Boolean(extractArea(all)) || /кв м|кв\.м|m2|m²|площ/.test(all);
+
+  const hasType = queryIntent.propertyType
+    ? queryIntent.propertyType.aliases.some(alias => all.includes(normalize(alias))) || hasGeneralApartmentSignal(all)
+    : true;
+
+  return hasLocation && hasType && (hasPrice || hasArea);
+}
+
+function scoreExternalCandidate(candidate, queryIntent) {
+  const allText = normalize([candidate.title, candidate.excerpt, candidate.url].join(" "));
+  let score = candidate.source_priority / 20;
   const reasons = [];
-
-  score += candidate.source_priority / 20;
 
   if (queryIntent.location) {
     const hasLocation = queryIntent.location.aliases.some(alias =>
@@ -295,69 +564,64 @@ function scoreExternalCandidate(candidate, queryIntent, originalQuery) {
     );
 
     if (hasLocation) {
-      score += 35;
+      score += 38;
       reasons.push("съвпада със зададената локация: " + queryIntent.location.canonical);
     } else {
-      score -= 35;
-      reasons.push("локацията не е ясно потвърдена");
+      score -= 60;
+      reasons.push("локацията не е потвърдена");
     }
   }
 
   if (queryIntent.propertyType) {
-    const hasPropertyType = queryIntent.propertyType.aliases.some(alias =>
+    const hasType = queryIntent.propertyType.aliases.some(alias =>
       allText.includes(normalize(alias))
     );
 
-    if (hasPropertyType) {
-      score += 28;
+    if (hasType) {
+      score += 30;
       reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
     } else if (hasGeneralApartmentSignal(allText)) {
       score += 12;
-      reasons.push("има общи сигнали за апартамент");
+      reasons.push("има общ сигнал за апартамент, но типът трябва да се провери");
     }
   }
 
   if (queryIntent.budget) {
-    const foundPrice = extractPrice(allText);
+    const price = extractPrice(allText);
 
-    if (foundPrice) {
-      if (foundPrice <= queryIntent.budget) {
-        score += 25;
-        reasons.push("откритата цена изглежда в рамките на бюджета");
+    if (price) {
+      if (price <= queryIntent.budget) {
+        score += 24;
+        reasons.push("откритата цена изглежда в бюджета");
       } else {
-        score -= 20;
+        score -= 35;
         reasons.push("откритата цена може да е над бюджета");
       }
     }
   }
 
   if (queryIntent.minArea) {
-    const foundArea = extractArea(allText);
+    const area = extractArea(allText);
 
-    if (foundArea) {
-      if (foundArea >= queryIntent.minArea) {
-        score += 15;
-        reasons.push("откритата площ изглежда над минималната");
+    if (area) {
+      if (area >= queryIntent.minArea) {
+        score += 14;
+        reasons.push("откритата площ изглежда над минимума");
       } else {
-        score -= 10;
-        reasons.push("откритата площ може да е под минималната");
+        score -= 15;
+        reasons.push("откритата площ може да е под минимума");
       }
     }
   }
 
   if (/€|eur|евро|лв|bgn/.test(allText)) {
-    score += 12;
+    score += 14;
     reasons.push("има сигнал за цена");
   }
 
   if (/кв м|кв\.м|m2|m²|площ/.test(allText)) {
-    score += 12;
+    score += 14;
     reasons.push("има сигнал за площ");
-  }
-
-  if (hasGeneralApartmentSignal(allText)) {
-    score += 18;
-    reasons.push("съдържа имотни ключови думи");
   }
 
   if (candidate.image) {
@@ -365,12 +629,7 @@ function scoreExternalCandidate(candidate, queryIntent, originalQuery) {
     reasons.push("има открита снимка");
   }
 
-  if (candidate.source_domain === "alo.bg") {
-    score += 8;
-  }
-
   candidate.score = Math.round(score * 10) / 10;
-  candidate.real_property_match = candidate.score >= MIN_SCORE;
   candidate.match_reason = buildCandidateReason(candidate, reasons);
 
   return candidate;
@@ -386,6 +645,10 @@ function buildCandidateReason(candidate, reasons) {
   return [intro, ...reasons].slice(0, 5).join("; ");
 }
 
+/* =========================
+   INTENT / PARSING
+========================= */
+
 function parseQueryIntent(query) {
   const normalized = normalize(query);
 
@@ -393,28 +656,40 @@ function parseQueryIntent(query) {
     item.aliases.some(alias => normalized.includes(normalize(alias)))
   ) || null;
 
-  const propertyType = PROPERTY_TYPE_RULES.find(item =>
+  let propertyType = PROPERTY_TYPE_RULES.find(item =>
     item.aliases.some(alias => normalized.includes(normalize(alias)))
   ) || null;
 
-  const budget = extractBudget(normalized);
-  const minArea = extractMinArea(normalized);
+  const explicitRooms = extractRooms(normalized);
+
+  if (!propertyType && explicitRooms) {
+    propertyType = PROPERTY_TYPE_RULES.find(item => item.rooms === explicitRooms) || null;
+  }
 
   return {
     original: query,
     normalized,
     location,
     propertyType,
-    budget,
-    minArea
+    rooms: explicitRooms,
+    budget: extractBudget(normalized),
+    minArea: extractMinArea(normalized)
   };
+}
+
+function extractRooms(text) {
+  const match = String(text || "").match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i);
+
+  if (!match) return null;
+
+  return Number(match[1]);
 }
 
 function extractBudget(text) {
   const patterns = [
     /до\s*([0-9\s]{4,8})\s*(евро|eur|€)/i,
-    /budget\s*([0-9\s]{4,8})/i,
-    /([0-9\s]{4,8})\s*(евро|eur|€)/i
+    /([0-9\s]{4,8})\s*(евро|eur|€)/i,
+    /\b([0-9]{5,7})\b/i
   ];
 
   for (const pattern of patterns) {
@@ -485,6 +760,10 @@ function hasGeneralApartmentSignal(text) {
   return /апартамент|студио|спалн|двустаен|тристаен|едностаен|жилищ|имот|етаж|продажба|продава/i.test(text);
 }
 
+/* =========================
+   HTML EXTRACTION HELPERS
+========================= */
+
 function extractAnchors(html, baseUrl) {
   const anchors = [];
   const regex = /<a\b([^>]*)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
@@ -511,35 +790,115 @@ function extractAnchors(html, baseUrl) {
   return anchors;
 }
 
-function extractSurroundingText(html, rawHref, anchorText) {
-  if (!rawHref) return anchorText || "";
+function extractListingChunk(html, rawHref, fallbackText) {
+  if (!rawHref) return fallbackText || "";
 
   const index = html.indexOf(rawHref);
+  if (index < 0) return fallbackText || "";
 
-  if (index < 0) {
-    return anchorText || "";
+  const start = Math.max(0, index - 1800);
+  const end = Math.min(html.length, index + 2600);
+
+  return html.slice(start, end);
+}
+
+function deriveListingTitle(anchor, text) {
+  const anchorText = cleanText(anchor.text);
+
+  if (anchorText && !isBadAnchorTitle(anchorText) && anchorText.length >= 12) {
+    return anchorText.slice(0, 140);
   }
 
-  const start = Math.max(0, index - 1400);
-  const end = Math.min(html.length, index + 1800);
-  const chunk = html.slice(start, end);
+  const clean = cleanText(text);
 
-  return stripHtml(chunk);
+  const titlePatterns = [
+    /(Продава[^.]{10,130})/i,
+    /((Едностаен|Двустаен|Тристаен|Четиристаен|Студио|Апартамент)[^.]{10,130})/i,
+    /((Апартамент|Студио)[^.]{10,130})/i
+  ];
+
+  for (const pattern of titlePatterns) {
+    const match = clean.match(pattern);
+
+    if (match) {
+      return cleanText(match[1]).slice(0, 140);
+    }
+  }
+
+  return cleanTitleFromUrl(anchor.url);
 }
 
 function extractNearbyImage(html, rawHref, pageUrl) {
-  if (!rawHref) return "";
+  const source = rawHref && html.includes(rawHref)
+    ? html.slice(Math.max(0, html.indexOf(rawHref) - 1800), Math.min(html.length, html.indexOf(rawHref) + 2200))
+    : html;
 
-  const index = html.indexOf(rawHref);
-
-  if (index < 0) return "";
-
-  const start = Math.max(0, index - 1600);
-  const end = Math.min(html.length, index + 1600);
-  const chunk = html.slice(start, end);
-
-  return extractImage(chunk, pageUrl);
+  return extractImage(source, pageUrl);
 }
+
+function extractTableText(html) {
+  const tables = [];
+  const tableRegex = /<table[\s\S]*?<\/table>/gi;
+  let match;
+
+  while ((match = tableRegex.exec(html)) !== null) {
+    const text = stripHtml(match[0]);
+
+    if (/€|eur|евро|цена|price|площ|area|кв|m2|m²|апартамент|студио|спалн|етаж|floor/i.test(text)) {
+      tables.push(text);
+    }
+  }
+
+  return tables.join(" ").slice(0, 5000);
+}
+
+function summarizeTableText(tableText, queryIntent) {
+  const text = tableText.replace(/\s+/g, " ").trim();
+
+  const searchTerms = [
+    queryIntent.location ? queryIntent.location.canonical : "",
+    queryIntent.propertyType ? queryIntent.propertyType.canonical : ""
+  ].filter(Boolean);
+
+  for (const term of searchTerms) {
+    const index = text.toLowerCase().indexOf(term.toLowerCase());
+
+    if (index >= 0) {
+      const start = Math.max(0, index - 120);
+      const end = Math.min(text.length, index + 260);
+
+      return "Намерена е информация в ценова таблица: " + text.slice(start, end).trim();
+    }
+  }
+
+  return "Намерена е ценова таблица или структурирана информация за имоти в тази страница.";
+}
+
+function makeExcerpt(text, queryIntent) {
+  const clean = cleanText(text);
+
+  const searchTerms = [
+    queryIntent.location ? queryIntent.location.canonical : "",
+    queryIntent.propertyType ? queryIntent.propertyType.canonical : ""
+  ].filter(Boolean);
+
+  for (const term of searchTerms) {
+    const index = clean.toLowerCase().indexOf(term.toLowerCase());
+
+    if (index >= 0) {
+      const start = Math.max(0, index - 90);
+      const end = Math.min(clean.length, index + 220);
+
+      return clean.slice(start, end).trim();
+    }
+  }
+
+  return clean.slice(0, 260);
+}
+
+/* =========================
+   URL / FETCH / UTILS
+========================= */
 
 function isLikelyListingUrl(url, source) {
   const lower = url.toLowerCase();
@@ -576,41 +935,66 @@ function isBlockedUrl(url) {
   const lower = String(url || "").toLowerCase();
 
   return [
-    ".css",
-    ".js",
-    ".json",
-    ".woff",
-    ".woff2",
-    ".svg",
-    "/login",
-    "/register",
-    "/privacy",
-    "/terms",
-    "/contacts",
-    "/contact",
-    "/help",
-    "facebook.com",
-    "instagram.com",
-    "youtube.com"
+    ".css", ".js", ".json", ".woff", ".woff2", ".svg",
+    "/login", "/register", "/privacy", "/terms", "/contacts",
+    "/contact", "/help", "facebook.com", "instagram.com", "youtube.com"
   ].some(part => lower.includes(part));
+}
+
+function isGenericUrl(url) {
+  const lower = String(url || "").toLowerCase();
+
+  return [
+    "kontakti", "contact", "za-nas", "about", "uslugi", "services",
+    "privacy", "cookie", "obshti-usloviya", "terms", "category", "tag"
+  ].some(part => lower.includes(part));
+}
+
+function isBadAnchorTitle(text) {
+  const clean = normalize(text);
+
+  if (!clean) return true;
+  if (clean.length < 6) return true;
+
+  return [
+    "виж на карта",
+    "виж карта",
+    "карта",
+    "следваща",
+    "предишна",
+    "подреди",
+    "сортиране",
+    "показване",
+    "филтри",
+    "вход",
+    "регистрация",
+    "любими",
+    "запази",
+    "отвори",
+    "още",
+    "детайли",
+    "меню"
+  ].some(bad => clean === bad || clean.includes(bad));
 }
 
 function extractImage(html, pageUrl = "") {
   let image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
 
   if (!image) {
-    const imgRegex = /<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi;
+    const imgRegex = /<img[^>]+(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["'][^>]*>/gi;
     let match;
 
     while ((match = imgRegex.exec(html)) !== null) {
       const candidate = toAbsoluteUrl(match[1], pageUrl);
+      if (!candidate) continue;
+
       const lower = candidate.toLowerCase();
 
-      if (!candidate) continue;
       if (lower.includes("logo")) continue;
       if (lower.includes("icon")) continue;
       if (lower.includes("sprite")) continue;
       if (lower.includes("placeholder")) continue;
+      if (lower.includes("blank")) continue;
 
       image = candidate;
       break;
@@ -618,6 +1002,15 @@ function extractImage(html, pageUrl = "") {
   }
 
   return image;
+}
+
+function extractTitle(html) {
+  const og = extractMeta(html, "og:title");
+  if (og) return og;
+
+  const match = String(html || "").match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+
+  return match ? decodeHtml(stripHtml(match[1]).trim()) : "";
 }
 
 function extractMeta(html, name) {
@@ -663,6 +1056,18 @@ async function fetchText(url) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function extractLocs(xml) {
+  const locs = [];
+  const regex = /<loc>\s*([^<]+)\s*<\/loc>/gi;
+  let match;
+
+  while ((match = regex.exec(xml)) !== null) {
+    locs.push(decodeHtml(match[1].trim()));
+  }
+
+  return locs;
 }
 
 function isAllowedUrl(url, domain) {
