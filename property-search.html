@@ -190,20 +190,39 @@ function findComplexKnowledge(property) {
 
 }
 
-/* Основно търсене */
-document.getElementById("searchButton").addEventListener("click", function () {
-  const location = normalizeText(document.getElementById("location").value);
-  const propertyType = normalizeText(document.getElementById("propertyType").value);
-  const rooms = Number(document.getElementById("rooms").value || 0);
-  const budget = Number(document.getElementById("budget").value || 0);
-  const minArea = Number(document.getElementById("minArea").value || 0);
-  const constructionStage = normalizeText(document.getElementById("constructionStage").value);
-  const beachLine = normalizeText(document.getElementById("beachLine").value);
-  const maintenance = normalizeText(document.getElementById("maintenance").value);
-  const freeText = normalizeText(document.getElementById("freeText").value);
-  const freeWords = freeText.split(/\s+/).filter(word => word.length > 2);
+/*
+  Candidate Collection Layer - v1
 
-  const results = properties.map(property => {
+  Тази функция отделя AI логиката за събиране и оценяване на локални кандидати
+  от click handler-а и от renderResults().
+
+  Важно:
+  - НЕ променя визията.
+  - НЕ променя card layout.
+  - НЕ пипа external-search.js.
+  - Подготвя архитектурата за следващи слоеве:
+    AI relevance scoring, deduplication, grouped intelligent results.
+*/
+function collectPropertyCandidates({
+  properties,
+  complexes,
+  filters
+}) {
+
+  const {
+    location,
+    propertyType,
+    rooms,
+    budget,
+    minArea,
+    constructionStage,
+    beachLine,
+    maintenance,
+    freeText,
+    freeWords
+  } = filters;
+
+  return properties.map(property => {
     let score = 0;
     let reasons = [];
     let aiAnswer = [];
@@ -214,58 +233,58 @@ document.getElementById("searchButton").addEventListener("click", function () {
     const allText = propertyText + " " + complexText;
 
     /* Основни филтри */
-   if (location) {
+    if (location) {
 
-  if (
-    !normalizeText(property.location).includes(location)
-  ) {
-    return null;
-  }
+      if (
+        !normalizeText(property.location).includes(location)
+      ) {
+        return null;
+      }
 
-  score += 35;
+      score += 35;
 
-  reasons.push(
-    "съвпада с избраната локация"
-  );
+      reasons.push(
+        "съвпада с избраната локация"
+      );
 
-}
+    }
 
-   if (propertyType) {
+    if (propertyType) {
 
-  if (!normalizeText(property.property_type).includes(propertyType)) {
-    return null;
-  }
+      if (!normalizeText(property.property_type).includes(propertyType)) {
+        return null;
+      }
 
-  score += 30;
+      score += 30;
 
-  reasons.push(
-    "отговаря на избрания тип имот"
-  );
+      reasons.push(
+        "отговаря на избрания тип имот"
+      );
 
-}
+    }
 
     if (rooms) {
 
-  if (Number(property.rooms) !== rooms) {
-    return null;
-  }
+      if (Number(property.rooms) !== rooms) {
+        return null;
+      }
 
-  score += 25;
+      score += 25;
 
-  reasons.push(
-    "отговаря на избрания брой стаи"
-  );
+      reasons.push(
+        "отговаря на избрания брой стаи"
+      );
 
-}
+    }
 
     if (budget && Number(property.price) <= budget) {
       score += 35;
       reasons.push("влиза в зададения бюджет");
     }
 
-  if (budget && Number(property.price) > budget) {
-  return null;
-}
+    if (budget && Number(property.price) > budget) {
+      return null;
+    }
 
     if (minArea && Number(property.area) >= minArea) {
       score += 20;
@@ -289,117 +308,123 @@ document.getElementById("searchButton").addEventListener("click", function () {
 
     /* Свободни въпроси */
     if (includesAny(freeText, ["целогодишно", "постоянно живеене", "зимата", "живеене целогодишно"])) {
-  if (property.year_round === true || (complexInfo && complexInfo.year_round === true)) {
-    score += 22;
-    reasons.push("подходящо е за целогодишно ползване или по-дълъг сезон");
-    aiAnswer.push("По въпроса за целогодишно ползване: този имот или комплекс е отбелязан като по-подходящ за целогодишно живеене.");
-  } else {
-    aiAnswer.push("Важно: този имот или комплекс не е отбелязан като оптимален за целогодишно живеене. По-скоро е подходящ за сезонно ползване, почивка или летни наеми.");
-  }
-}
+      if (property.year_round === true || (complexInfo && complexInfo.year_round === true)) {
+        score += 22;
+        reasons.push("подходящо е за целогодишно ползване или по-дълъг сезон");
+        aiAnswer.push("По въпроса за целогодишно ползване: този имот или комплекс е отбелязан като по-подходящ за целогодишно живеене.");
+      } else {
+        aiAnswer.push("Важно: този имот или комплекс не е отбелязан като оптимален за целогодишно живеене. По-скоро е подходящ за сезонно ползване, почивка или летни наеми.");
+      }
+    }
+
     if (includesAny(freeText, ["инфраструктура", "магазини", "автобус", "транспорт", "училище", "детска градина", "болница", "аптека"])) {
-  if (complexInfo && complexInfo.infrastructure) {
-    score += 18;
-    reasons.push("има налична информация за инфраструктурата около комплекса");
-    aiAnswer.push("По отношение на инфраструктурата: " + complexInfo.infrastructure);
-  } else if (property.infrastructure) {
-    score += 14;
-    reasons.push("има информация за инфраструктурата около имота");
-    aiAnswer.push("По отношение на инфраструктурата: " + property.infrastructure);
-  } else {
-    aiAnswer.push("За инфраструктурата около този имот няма достатъчно въведена информация и е добре да се провери допълнително.");
-  }
-}
+      if (complexInfo && complexInfo.infrastructure) {
+        score += 18;
+        reasons.push("има налична информация за инфраструктурата около комплекса");
+        aiAnswer.push("По отношение на инфраструктурата: " + complexInfo.infrastructure);
+      } else if (property.infrastructure) {
+        score += 14;
+        reasons.push("има информация за инфраструктурата около имота");
+        aiAnswer.push("По отношение на инфраструктурата: " + property.infrastructure);
+      } else {
+        aiAnswer.push("За инфраструктурата около този имот няма достатъчно въведена информация и е добре да се провери допълнително.");
+      }
+    }
+
     if (includesAny(freeText, ["тихо", "спокойно", "тишина", "шумно", "нощен живот", "дискотеки", "парти"])) {
 
-  if (complexInfo && complexInfo.environment) {
+      if (complexInfo && complexInfo.environment) {
 
-    const env = Array.isArray(complexInfo.environment)
-  ? complexInfo.environment.join(" ").toLowerCase()
-  : String(complexInfo.environment).toLowerCase();
+        const env = Array.isArray(complexInfo.environment)
+          ? complexInfo.environment.join(" ").toLowerCase()
+          : String(complexInfo.environment).toLowerCase();
 
-    if (
-      includesAny(freeText, ["тихо", "спокойно", "тишина"]) &&
-      includesAny(env, ["тихо", "спокойно", "зеленина", "природа"])
-    ) {
-      score += 20;
-      reasons.push("подходящо за хора търсещи спокойствие");
-      aiAnswer.push("Районът и средата около комплекса са по-спокойни и подходящи за почивка или по-тих начин на живот.");
+        if (
+          includesAny(freeText, ["тихо", "спокойно", "тишина"]) &&
+          includesAny(env, ["тихо", "спокойно", "зеленина", "природа"])
+        ) {
+          score += 20;
+          reasons.push("подходящо за хора търсещи спокойствие");
+          aiAnswer.push("Районът и средата около комплекса са по-спокойни и подходящи за почивка или по-тих начин на живот.");
+        }
+
+        if (
+          includesAny(freeText, ["шумно", "нощен живот", "дискотеки", "парти"]) &&
+          includesAny(env, ["нощен живот", "център", "заведения", "активен"])
+        ) {
+          score += 20;
+          reasons.push("подходящо за активен район и нощен живот");
+          aiAnswer.push("Този район е по-активен и е близо до заведения, развлечения или нощен живот.");
+        }
+
+      }
+
     }
 
-    if (
-      includesAny(freeText, ["шумно", "нощен живот", "дискотеки", "парти"]) &&
-      includesAny(env, ["нощен живот", "център", "заведения", "активен"])
-    ) {
-      score += 20;
-      reasons.push("подходящо за активен район и нощен живот");
-      aiAnswer.push("Този район е по-активен и е близо до заведения, развлечения или нощен живот.");
-    }
-
-  }
-
-}
     if (includesAny(freeText, ["инвестиция", "доходност", "наем", "отдаване", "booking", "airbnb", "сезонни наеми", "краткосрочен наем"])) {
 
-  if (complexInfo && complexInfo.rental_potential) {
-    score += 22;
-    reasons.push("има добър потенциал за отдаване под наем");
-    aiAnswer.push("Като инвестиция и отдаване под наем: " + complexInfo.rental_potential);
-  } else if (property.rental_potential) {
-    score += 18;
-    reasons.push("имотът има описан потенциал за наем");
-    aiAnswer.push("Като инвестиция и отдаване под наем: " + property.rental_potential);
-  } else {
-    aiAnswer.push("За потенциала за отдаване под наем няма достатъчно въведена информация и трябва да се оцени според локацията, сезона и типа имот.");
-  }
+      if (complexInfo && complexInfo.rental_potential) {
+        score += 22;
+        reasons.push("има добър потенциал за отдаване под наем");
+        aiAnswer.push("Като инвестиция и отдаване под наем: " + complexInfo.rental_potential);
+      } else if (property.rental_potential) {
+        score += 18;
+        reasons.push("имотът има описан потенциал за наем");
+        aiAnswer.push("Като инвестиция и отдаване под наем: " + property.rental_potential);
+      } else {
+        aiAnswer.push("За потенциала за отдаване под наем няма достатъчно въведена информация и трябва да се оцени според локацията, сезона и типа имот.");
+      }
 
-}
+    }
+
     if (includesAny(freeText, ["разсрочване", "разсрочено", "вноски", "плащане на вноски", "гъвкаво плащане", "схема на плащане"])) {
 
-  if (property.installment === true || (complexInfo && complexInfo.installment === true)) {
-    score += 20;
-    reasons.push("има възможност за разсрочено плащане");
-    aiAnswer.push("За този имот или комплекс има отбелязана възможност за разсрочено плащане.");
-  } else {
-    aiAnswer.push("Не е отбелязана възможност за разсрочено плащане. Това трябва да се провери допълнително според конкретния имот и продавач.");
-  }
+      if (property.installment === true || (complexInfo && complexInfo.installment === true)) {
+        score += 20;
+        reasons.push("има възможност за разсрочено плащане");
+        aiAnswer.push("За този имот или комплекс има отбелязана възможност за разсрочено плащане.");
+      } else {
+        aiAnswer.push("Не е отбелязана възможност за разсрочено плащане. Това трябва да се провери допълнително според конкретния имот и продавач.");
+      }
 
-}
+    }
+
     if (includesAny(freeText, ["акт 16", "act 16", "готов имот", "завършен", "строеж", "в строеж", "на зелено"])) {
 
-  if (property.act16 === true || (complexInfo && complexInfo.act16 === true)) {
-    score += 20;
-    reasons.push("имотът или комплексът е с Акт 16");
-    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като завършен и с Акт 16.");
-  } else if (property.under_construction === true || (complexInfo && complexInfo.under_construction === true)) {
-    score += 15;
-    reasons.push("имотът или комплексът е в строеж");
-    aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като строящ се.");
-  } else {
-    aiAnswer.push("За статута на строителство или Акт 16 няма достатъчно въведена информация и трябва да се провери допълнително.");
-  }
+      if (property.act16 === true || (complexInfo && complexInfo.act16 === true)) {
+        score += 20;
+        reasons.push("имотът или комплексът е с Акт 16");
+        aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като завършен и с Акт 16.");
+      } else if (property.under_construction === true || (complexInfo && complexInfo.under_construction === true)) {
+        score += 15;
+        reasons.push("имотът или комплексът е в строеж");
+        aiAnswer.push("По отношение на статута: този имот или комплекс е отбелязан като строящ се.");
+      } else {
+        aiAnswer.push("За статута на строителство или Акт 16 няма достатъчно въведена информация и трябва да се провери допълнително.");
+      }
 
-}
+    }
+
     if (includesAny(freeText, ["море", "морска гледка", "гледка към морето", "първа линия", "близо до плажа", "плаж"])) {
 
-  if (property.sea_view === true) {
-    score += 25;
-    reasons.push("имотът има морска гледка");
-    aiAnswer.push("Този имот е отбелязан като имот с морска гледка.");
-  }
+      if (property.sea_view === true) {
+        score += 25;
+        reasons.push("имотът има морска гледка");
+        aiAnswer.push("Този имот е отбелязан като имот с морска гледка.");
+      }
 
-  if (property.first_line === true || (complexInfo && complexInfo.first_line === true)) {
-    score += 25;
-    reasons.push("имотът или комплексът е близо до морето");
-    aiAnswer.push("Имотът или комплексът е отбелязан като първа линия или много близо до плажа.");
-  }
+      if (property.first_line === true || (complexInfo && complexInfo.first_line === true)) {
+        score += 25;
+        reasons.push("имотът или комплексът е близо до морето");
+        aiAnswer.push("Имотът или комплексът е отбелязан като първа линия или много близо до плажа.");
+      }
 
-  if (complexInfo && complexInfo.beach_distance) {
-    score += 12;
-    aiAnswer.push("Разстояние до плажа: " + complexInfo.beach_distance);
-  }
+      if (complexInfo && complexInfo.beach_distance) {
+        score += 12;
+        aiAnswer.push("Разстояние до плажа: " + complexInfo.beach_distance);
+      }
 
-}
+    }
 
     if (includesAny(freeText, ["обзавед", "мебел", "готов", "до ключ", "издава"])) {
       score += 10;
@@ -430,31 +455,62 @@ document.getElementById("searchButton").addEventListener("click", function () {
       complexInfo
     };
   })
-  .filter(item => item && item.score > 0)
+  .filter(item => item && item.score > 0);
+}
+
+/* Основно търсене */
+document.getElementById("searchButton").addEventListener("click", function () {
+  const location = normalizeText(document.getElementById("location").value);
+  const propertyType = normalizeText(document.getElementById("propertyType").value);
+  const rooms = Number(document.getElementById("rooms").value || 0);
+  const budget = Number(document.getElementById("budget").value || 0);
+  const minArea = Number(document.getElementById("minArea").value || 0);
+  const constructionStage = normalizeText(document.getElementById("constructionStage").value);
+  const beachLine = normalizeText(document.getElementById("beachLine").value);
+  const maintenance = normalizeText(document.getElementById("maintenance").value);
+  const freeText = normalizeText(document.getElementById("freeText").value);
+  const freeWords = freeText.split(/\s+/).filter(word => word.length > 2);
+
+  const results = collectPropertyCandidates({
+    properties,
+    complexes,
+    filters: {
+      location,
+      propertyType,
+      rooms,
+      budget,
+      minArea,
+      constructionStage,
+      beachLine,
+      maintenance,
+      freeText,
+      freeWords
+    }
+  })
   .sort((a, b) => {
 
-  if (b.score !== a.score) {
-    return b.score - a.score;
-  }
-
-  const budget = Number(
-    document.getElementById("budget").value || 0
-  );
-
-  if (budget) {
-
-    const diffA = Math.abs(budget - a.price);
-    const diffB = Math.abs(budget - b.price);
-
-    if (diffA !== diffB) {
-      return diffA - diffB;
+    if (b.score !== a.score) {
+      return b.score - a.score;
     }
 
-  }
+    const budget = Number(
+      document.getElementById("budget").value || 0
+    );
 
-  return b.area - a.area;
+    if (budget) {
 
-});
+      const diffA = Math.abs(budget - a.price);
+      const diffB = Math.abs(budget - b.price);
+
+      if (diffA !== diffB) {
+        return diffA - diffB;
+      }
+
+    }
+
+    return b.area - a.area;
+
+  });
 
   renderResults(results);
 
@@ -472,20 +528,20 @@ document.getElementById("searchButton").addEventListener("click", function () {
 
   searchExternalSources(externalQuery);
 
-setTimeout(() => {
-  const resultsBox = document.getElementById("results");
-  const firstResult = resultsBox.querySelector(".card");
+  setTimeout(() => {
+    const resultsBox = document.getElementById("results");
+    const firstResult = resultsBox.querySelector(".card");
 
-  if (!firstResult) return;
+    if (!firstResult) return;
 
-  const headerOffset = 80;
-  const top = firstResult.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+    const headerOffset = 80;
+    const top = firstResult.getBoundingClientRect().top + window.pageYOffset - headerOffset;
 
-  window.scrollTo({
-    top: top,
-    behavior: "smooth"
-  });
-}, 150);
+    window.scrollTo({
+      top: top,
+      behavior: "smooth"
+    });
+  }, 150);
 
 });
 
