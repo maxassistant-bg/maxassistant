@@ -35,15 +35,15 @@ const SOURCES = [
 
 const KNOWN_LOCATIONS = [
   { canonical: "созопол", latin: "sozopol", aliases: ["созопол", "sozopol"], aloLocationId: "490", aloRegionId: "2" },
-  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"], aloRegionId: "2" },
-  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"], aloRegionId: "2" },
-  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"], aloRegionId: "2" },
-  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"], aloRegionId: "2" },
-  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"], aloRegionId: "2" },
-  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"], aloRegionId: "2" },
-  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"], aloRegionId: "2" },
-  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"], aloRegionId: "2" },
-  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo"], aloRegionId: "2" }
+  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"] },
+  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"] },
+  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"] },
+  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"] },
+  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"] },
+  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"] },
+  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"] },
+  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"] },
+  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo"] }
 ];
 
 const PROPERTY_TYPE_RULES = [
@@ -263,7 +263,6 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   diag.generated_search_urls = searchUrls.length;
 
   const listingUrls = [];
-  const directCandidates = [];
 
   for (const searchUrl of searchUrls.slice(0, MAX_SEARCH_PAGES)) {
     const html = await fetchText(searchUrl);
@@ -271,18 +270,9 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
 
     diag.fetched_search_pages += 1;
 
-    if (source.domain === "alo.bg") {
-      directCandidates.push(...extractAloCandidatesFromSearchPage(source, html, searchUrl, queryIntent));
-    }
-
     const extracted = extractListingUrlsFromSearchPage(source, html, searchUrl);
     listingUrls.push(...extracted);
   }
-
-  const scoredDirect = directCandidates
-    .map(candidate => scoreAloSearchCandidate(candidate, queryIntent))
-    .filter(candidate => candidate.score >= MIN_PORTAL_SCORE)
-    .sort((a, b) => b.score - a.score);
 
   const uniqueListingUrls = unique(listingUrls)
     .filter(url => isAllowedUrl(url, source.domain))
@@ -290,7 +280,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     .filter(url => isConcreteListingUrl(url, source))
     .slice(0, MAX_DETAIL_FETCHES_PER_SOURCE);
 
-  diag.extracted_listing_urls = uniqueListingUrls.length + directCandidates.length;
+  diag.extracted_listing_urls = uniqueListingUrls.length;
 
   const detailPages = await Promise.all(
     uniqueListingUrls.map(url => fetchPortalListingDetail(source, url, queryIntent))
@@ -298,10 +288,8 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
 
   diag.fetched_detail_pages = uniqueListingUrls.length;
 
-  return deduplicateResults([
-      ...scoredDirect,
-      ...detailPages.filter(Boolean)
-    ])
+  return detailPages
+    .filter(Boolean)
     .filter(item => item.score >= MIN_PORTAL_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
@@ -327,7 +315,11 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   const encodedLatin = encodeURIComponent(latinQuery);
 
   if (source.domain === "alo.bg") {
-    const urls = [];
+    const urls = [
+      `https://www.alo.bg/searchq/?q=${encodedBg}`,
+      `https://www.alo.bg/searchq/?q=${encodedLatin}`,
+      `https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?q=${encodedBg}`
+    ];
 
     if (location && location.aloLocationId && location.aloRegionId) {
       let structured = `https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?location_ids=${location.aloLocationId}&region_id=${location.aloRegionId}&order_by=price-asc`;
@@ -336,17 +328,8 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
         structured += `&p[413]=${propertyType.aloTypeId}`;
       }
 
-      urls.push(structured);
+      urls.unshift(structured);
     }
-
-    if (location && location.aloRegionId) {
-      urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?region_id=${location.aloRegionId}&q=${encodedBg}&order_by=price-asc`);
-      urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?region_id=${location.aloRegionId}&q=${encodedLatin}&order_by=price-asc`);
-    }
-
-    urls.push(`https://www.alo.bg/searchq/?q=${encodedBg}`);
-    urls.push(`https://www.alo.bg/searchq/?q=${encodedLatin}`);
-    urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?q=${encodedBg}`);
 
     return unique(urls);
   }
@@ -639,206 +622,6 @@ function hasGeneralApartmentSignal(text) {
   return /апартамент|студио|спалн|едностаен|двустаен|тристаен|жилищ|имот|етаж|продажба|продава/i.test(text);
 }
 
-
-/* =========================
-   ALO SEARCH PAGE DIRECT LISTING PARSER
-========================= */
-
-function extractAloCandidatesFromSearchPage(source, html, pageUrl, queryIntent) {
-  const anchors = extractAnchors(html, pageUrl)
-    .filter(anchor => isAllowedUrl(anchor.url, source.domain))
-    .filter(anchor => !isBlockedUrl(anchor.url))
-    .filter(anchor => isConcreteListingUrl(anchor.url, source))
-    .filter(anchor => !isBadAnchorTitle(anchor.text));
-
-  const candidates = [];
-
-  for (const anchor of deduplicateAnchors(anchors).slice(0, 30)) {
-    const chunk = extractListingChunk(html, anchor.rawHref, anchor.text);
-    const text = cleanText(stripHtml(chunk));
-    const title = deriveListingTitle(anchor, text);
-    const image = extractNearbyImage(chunk || html, anchor.rawHref, pageUrl);
-    const price = extractPrice(text);
-    const area = extractArea(text);
-
-    if (!title || isBadAnchorTitle(title)) continue;
-
-    const all = normalize([title, text, anchor.url].join(" "));
-
-    if (!hasGeneralApartmentSignal(all)) continue;
-
-    if (queryIntent.location) {
-      const hasLocation = queryIntent.location.aliases.some(alias =>
-        all.includes(normalize(alias))
-      );
-
-      if (!hasLocation) continue;
-    }
-
-    if (queryIntent.propertyType) {
-      const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
-
-      if (conflictType) continue;
-
-      const exactType = queryIntent.propertyType.aliases.some(alias =>
-        all.includes(normalize(alias))
-      );
-
-      if (!exactType) continue;
-    }
-
-    if (!price && !area && !/€|eur|евро|кв м|кв\.м|m2|m²/.test(all)) continue;
-
-    candidates.push({
-      title,
-      url: anchor.url,
-      image,
-      excerpt: makeAloExcerpt({ text, price, area }),
-      source: source.name,
-      source_domain: source.domain,
-      source_type: source.type,
-      source_priority: source.priority,
-      type: "external_portal_listing_from_search_page",
-      real_property_match: true,
-      has_table: false,
-      match_reason: "",
-      score: 0,
-      _price: price,
-      _area: area
-    });
-  }
-
-  return candidates;
-}
-
-function scoreAloSearchCandidate(candidate, queryIntent) {
-  const all = normalize([
-    candidate.title,
-    candidate.excerpt,
-    candidate.url
-  ].join(" "));
-
-  let score = candidate.source_priority / 20;
-  const reasons = ["резултатът е конкретна обява от Alo.bg, извлечена от страницата с резултати"];
-
-  if (queryIntent.location) {
-    const ok = queryIntent.location.aliases.some(alias =>
-      all.includes(normalize(alias))
-    );
-
-    if (ok) {
-      score += 42;
-      reasons.push("съвпада със зададената локация: " + queryIntent.location.canonical);
-    } else {
-      score -= 80;
-      reasons.push("локацията не е потвърдена");
-    }
-  }
-
-  if (queryIntent.propertyType) {
-    const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
-    const exactType = queryIntent.propertyType.aliases.some(alias =>
-      all.includes(normalize(alias))
-    );
-
-    if (conflictType) {
-      score -= 140;
-      reasons.push("открит е различен тип имот: " + conflictType);
-    } else if (exactType) {
-      score += 36;
-      reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
-    } else {
-      score -= 55;
-      reasons.push("типът имот не е потвърден");
-    }
-  }
-
-  if (queryIntent.budget && candidate._price) {
-    if (candidate._price <= queryIntent.budget) {
-      score += 28;
-      reasons.push("цената е в бюджета");
-    } else {
-      score -= 45;
-      reasons.push("цената е над бюджета");
-    }
-  }
-
-  if (candidate._price) {
-    score += 18;
-    reasons.push("има конкретна цена");
-  }
-
-  if (candidate._area) {
-    score += 16;
-    reasons.push("има конкретна площ");
-  }
-
-  if (candidate.image) {
-    score += 5;
-    reasons.push("има снимка");
-  }
-
-  candidate.score = Math.round(score * 10) / 10;
-  candidate.match_reason = reasons.slice(0, 5).join("; ");
-
-  return candidate;
-}
-
-function makeAloExcerpt({ text, price, area }) {
-  const parts = [];
-
-  if (price) parts.push("Цена: " + Number(price).toLocaleString() + " €");
-  if (area) parts.push("Площ: " + area + " кв.м");
-
-  const shortText = cleanText(text)
-    .replace(/\s+/g, " ")
-    .slice(0, 360);
-
-  if (shortText) parts.push(shortText);
-
-  return parts.join(" | ").slice(0, 460);
-}
-
-function extractListingChunk(html, rawHref, fallbackText) {
-  if (!rawHref) return fallbackText || "";
-
-  const index = html.indexOf(rawHref);
-  if (index < 0) return fallbackText || "";
-
-  const start = Math.max(0, index - 1600);
-  const end = Math.min(html.length, index + 2800);
-
-  return html.slice(start, end);
-}
-
-function deriveListingTitle(anchor, text) {
-  const anchorText = cleanText(anchor.text);
-
-  if (anchorText && !isBadAnchorTitle(anchorText) && anchorText.length >= 10) {
-    return anchorText.slice(0, 150);
-  }
-
-  const clean = cleanText(text);
-
-  const patterns = [
-    /(Продава[^.]{10,150})/i,
-    /((Едностаен|Двустаен|Тристаен|Четиристаен|Студио|Апартамент)[^.]{10,150})/i,
-    /((Апартамент|Студио)[^.]{10,150})/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = clean.match(pattern);
-    if (match) return cleanText(match[1]).slice(0, 150);
-  }
-
-  return cleanTitleFromUrl(anchor.url);
-}
-
-function extractNearbyImage(html, rawHref, pageUrl) {
-  return extractImage(html, pageUrl);
-}
-
-
 /* =========================
    URL RULES
 ========================= */
@@ -892,7 +675,7 @@ function isConcreteListingUrl(url, source) {
   }
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
   }
 
   if (source.domain === "imot.bg") {
@@ -1010,7 +793,7 @@ function isLikelyListingUrl(url, source) {
   const lower = url.toLowerCase();
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
   }
 
   if (source.domain === "imot.bg") {
