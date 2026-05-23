@@ -492,86 +492,123 @@ function renderResults(results) {
   }
 
  resultsBox.innerHTML = results.map(item => `
-    <div class="card">
-    ${item.image ? `
-  <img src="${item.image}" alt="${item.complex}" class="property-image">
-` : ""}
-      <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
+    <div class="card property-result-card">
 
-      ${item.aiAnswer && item.aiAnswer.length ? `
-        <div class="ai-answer">
-          <strong>Отговор според зададения въпрос:</strong>
-          <ul>
-            ${item.aiAnswer.map(answer => `<li>${answer}</li>`).join("")}
-          </ul>
-        </div>
+      ${item.image ? `
+        <img src="${item.image}" alt="${item.complex}" class="property-image">
       ` : ""}
 
-      <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
-      <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
-      <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
-      <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
-      <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
-      <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
+      <div class="property-summary">
 
-<p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
-
-<p><strong>Балкони:</strong> ${item.balconies || "Няма данни"}</p>
-
-<p><strong>Склад:</strong> ${item.storage_room ? "Да" : "Не"}</p>
-
-<p><strong>Гардеробна:</strong> ${item.walk_in_closet ? "Да" : "Не"}</p>
-
-<p><strong>Мазе:</strong> ${item.basement ? "Да" : "Не"}</p>
-
-<p><strong>Гледка:</strong> ${item.view || "Няма данни"}</p>
-
-<p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
-      <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
-      <p><strong>Цена:</strong> ${item.price ? Number(item.price).toLocaleString() + " €" : "Няма данни"}</p>
-      <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
-      <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
-      <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
-      <p><strong>Линия до плаж:</strong> ${item.beach_line || "Няма данни"}</p>
-      <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
-      <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
-      <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
-      ${item.url ? `
-  <a href="${item.url}" target="_blank" class="button property-link">
-    Виж обявата
-  </a>
-` : ""}
-      ${item.complexInfo && item.complexInfo.infrastructure ? `
-  <div class="ai-answer">
-    <strong>Инфраструктура в комплекса:</strong>
-    <ul>
-      ${item.complexInfo.infrastructure.map(infra => `<li>${infra}</li>`).join("")}
-    </ul>
-  </div>
-` : ""}
-
-      ${item.reasons && item.reasons.length ? `
-        <div class="ai-answer">
-          <strong>Защо MaxAssistant показва този имот:</strong>
-          <ul>
-            ${item.reasons.map(reason => `<li>${reason}</li>`).join("")}
-          </ul>
+        <div class="property-price-hero">
+          ${item.price ? Number(item.price).toLocaleString() + " €" : "Цена при запитване"}
         </div>
-      ` : ""}
 
-      ${item.complexInfo ? `
-        <div class="ai-answer">
-          <strong>AI контекст за комплекса:</strong>
-          <p>${item.complexInfo.name} – ${item.complexInfo.location}${item.complexInfo.area ? ", " + item.complexInfo.area : ""}</p>
-          <p>${item.complexInfo.strengths ? item.complexInfo.strengths.join(", ") : ""}</p>
+        <h3>${item.property_type || "Имот"} – ${item.complex}</h3>
+
+        <p class="property-location-line">
+          ${item.location || "Няма данни"}${item.building ? " / " + item.building : ""}
+        </p>
+
+        <div class="property-key-facts">
+          <span>${item.area || "—"} кв.м</span>
+          <span>${item.rooms || "—"} стаи</span>
+          <span>Етаж ${item.floor || "—"}</span>
+          <span>${item.view || "Гледка: няма данни"}</span>
         </div>
-      ` : ""}
+
+        ${item.url ? `
+          <a href="${item.url}" target="_blank" class="button property-link">
+            Виж обявата
+          </a>
+        ` : ""}
+
+        <button class="details-toggle" onclick="togglePropertyDetails(this)">
+          Покажи повече
+        </button>
+
+      </div>
+
+      <div class="property-details-panel">
+
+        ${item.aiAnswer && item.aiAnswer.length ? `
+          <div class="ai-answer">
+            <strong>Отговор според зададения въпрос:</strong>
+            <ul>
+              ${item.aiAnswer.map(answer => `<li>${answer}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
+
+        <div class="property-details-grid">
+          <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
+          <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
+          <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
+          <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
+          <p><strong>Етаж:</strong> ${item.floor || "Няма данни"}</p>
+          <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
+          <p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
+          <p><strong>Балкони:</strong> ${item.balconies || "Няма данни"}</p>
+          <p><strong>Склад:</strong> ${item.storage_room ? "Да" : "Не"}</p>
+          <p><strong>Гардеробна:</strong> ${item.walk_in_closet ? "Да" : "Не"}</p>
+          <p><strong>Мазе:</strong> ${item.basement ? "Да" : "Не"}</p>
+          <p><strong>Гледка:</strong> ${item.view || "Няма данни"}</p>
+          <p><strong>Обзавеждане:</strong> ${item.furnishing_status || "Няма данни"}</p>
+          <p><strong>Площ:</strong> ${item.area || "Няма данни"} кв.м</p>
+          <p><strong>Цена/кв.м:</strong> ${item.price_per_m2 ? Number(item.price_per_m2).toLocaleString() + " €" : "Няма данни"}</p>
+          <p><strong>Етап:</strong> ${item.construction_stage || "Няма данни"}</p>
+          <p><strong>Издаване:</strong> ${item.completion_status || "Няма данни"}</p>
+          <p><strong>Линия до плаж:</strong> ${item.beach_line || "Няма данни"}</p>
+          <p><strong>Такса поддръжка:</strong> ${item.maintenance_fee || "Няма данни"}</p>
+          <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
+          <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
+        </div>
+
+        ${item.complexInfo && item.complexInfo.infrastructure ? `
+          <div class="ai-answer">
+            <strong>Инфраструктура в комплекса:</strong>
+            <ul>
+              ${item.complexInfo.infrastructure.map(infra => `<li>${infra}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
+
+        ${item.reasons && item.reasons.length ? `
+          <div class="ai-answer">
+            <strong>Защо MaxAssistant показва този имот:</strong>
+            <ul>
+              ${item.reasons.map(reason => `<li>${reason}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
+
+        ${item.complexInfo ? `
+          <div class="ai-answer">
+            <strong>AI контекст за комплекса:</strong>
+            <p>${item.complexInfo.name} – ${item.complexInfo.location}${item.complexInfo.area ? ", " + item.complexInfo.area : ""}</p>
+            <p>${item.complexInfo.strengths ? item.complexInfo.strengths.join(", ") : ""}</p>
+          </div>
+        ` : ""}
+
+      </div>
+
     </div>
     `).join("") + `
   <button class="button new-search-button" onclick="scrollToSearch()">
     Ново търсене
   </button>
 `;
+}
+
+function togglePropertyDetails(button) {
+  const card = button.closest(".property-result-card");
+  const panel = card.querySelector(".property-details-panel");
+
+  panel.classList.toggle("is-open");
+
+  button.textContent = panel.classList.contains("is-open")
+    ? "Скрий детайлите"
+    : "Покажи повече";
 }
 
 function scrollToSearch() {
