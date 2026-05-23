@@ -104,6 +104,69 @@
     font-size: 21px;
   }
 }
+
+.grouped-results-section {
+  display: grid;
+  gap: 22px;
+}
+
+.result-group-title {
+  margin: 10px 0 -4px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(155,44,255,.18), rgba(255,79,216,.08));
+  border: 1px solid rgba(192,108,255,.26);
+  box-shadow: 0 16px 45px rgba(0,0,0,.22);
+}
+
+.result-group-title h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.result-group-title p {
+  margin: 0;
+  color: #b8b8c8;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ai-match-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(155,44,255,.18);
+  border: 1px solid rgba(192,108,255,.32);
+  color: #d8b8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+@media(max-width:520px){
+  .result-group-title {
+    margin: 4px 0 -6px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .result-group-title h2 {
+    font-size: 21px;
+  }
+
+  .result-group-title p {
+    font-size: 14px;
+  }
+
+  .ai-match-badge {
+    margin: 20px 20px 0;
+  }
+}
+
 </style>
 
 </head>
@@ -805,24 +868,44 @@ function buildAISearchStatus(results) {
   `;
 }
 
-function renderResults(results) {
-  const resultsBox = document.getElementById("results");
 
-  if (!results.length) {
-    resultsBox.innerHTML = buildAISearchStatus(results) + `
-      <div class="card">
-        <h3>Няма точен резултат в локалната база</h3>
-        <p>
-          Това не означава, че няма подходящ имот. MaxAssistant ще провери и външните източници.
-        </p>
-      </div>
+function groupResultsByRelevance(results) {
+  return {
+    primary: results.filter(item => item.score >= 120),
+    secondary: results.filter(item => item.score >= 70 && item.score < 120),
+    weak: results.filter(item => item.score > 0 && item.score < 70)
+  };
+}
 
-      <div id="externalResults" class="external-results"></div>
-    `;
-    return;
+function getMatchLabel(item) {
+  if (item.score >= 120) {
+    return "Най-силно AI съвпадение";
   }
 
-  resultsBox.innerHTML = buildAISearchStatus(results) + results.map(item => `
+  if (item.score >= 70) {
+    return "Алтернативно релевантно предложение";
+  }
+
+  return "Допълнителна възможност";
+}
+
+function renderResultGroup(title, description, items) {
+  if (!items.length) return "";
+
+  return `
+    <div class="grouped-results-section">
+      <div class="result-group-title">
+        <h2>${title}</h2>
+        <p>${description}</p>
+      </div>
+
+      ${items.map(item => renderPropertyCard(item)).join("")}
+    </div>
+  `;
+}
+
+function renderPropertyCard(item) {
+  return `
     <div class="card property-card">
 
       ${item.image ? `
@@ -830,6 +913,8 @@ function renderResults(results) {
       ` : ""}
 
       <div class="property-card-main">
+
+        <span class="ai-match-badge">${getMatchLabel(item)}</span>
 
         ${item.price ? `
           <div class="property-price-hero">
@@ -927,7 +1012,53 @@ function renderResults(results) {
       </div>
 
     </div>
-  `).join("") + `
+  `;
+}
+
+function renderResults(results) {
+  const resultsBox = document.getElementById("results");
+  const aiStatus = buildAISearchStatus(results);
+
+  if (!results.length) {
+    resultsBox.innerHTML = `
+      ${aiStatus}
+
+      <div class="card">
+        <h3>Няма точен резултат в локалната база</h3>
+        <p>
+          MaxAssistant провери локалната база на NewHome Bulgaria, но не намери достатъчно силно съвпадение.
+          Следваща стъпка е проверка във външния discovery layer.
+        </p>
+      </div>
+
+      <div id="externalResults" class="external-results"></div>
+    `;
+    return;
+  }
+
+  const groupedResults = groupResultsByRelevance(results);
+
+  resultsBox.innerHTML = `
+    ${aiStatus}
+
+    ${renderResultGroup(
+      "Най-добри съвпадения",
+      "Това са имотите, които най-силно отговарят на зададените критерии и имат най-висока AI оценка.",
+      groupedResults.primary
+    )}
+
+    ${renderResultGroup(
+      "Алтернативни предложения",
+      "Тези имоти не са най-силното съвпадение, но остават релевантни според локация, тип, бюджет или AI контекст.",
+      groupedResults.secondary
+    )}
+
+    ${renderResultGroup(
+      "Допълнителни възможности",
+      "Тук са по-слабите съвпадения, които MaxAssistant не изключва напълно, но не ги поставя като водещ избор.",
+      groupedResults.weak
+    )}
+
     <div id="externalResults" class="external-results"></div>
 
     <button class="button new-search-button" onclick="scrollToSearch()">
