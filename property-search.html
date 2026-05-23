@@ -553,7 +553,7 @@ async function searchExternalSources(query) {
             <div class="external-result-item">
 
               ${result.image ? `
-                <img src="${result.image}" alt="${result.title}" class="external-result-image">
+                <img src="${result.image}" alt="${result.title}" class="external-result-image" onerror="this.remove()">
               ` : ""}
 
               <div class="external-result-content">
