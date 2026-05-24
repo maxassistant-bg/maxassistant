@@ -158,7 +158,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v13_beach_classification",
+      mode: "external_discovery_v12_beach_precision",
       results: []
     });
   }
@@ -228,7 +228,7 @@ module.exports = async function handler(req, res) {
     const payload = {
       ok: true,
       query: q,
-      mode: "external_discovery_v13_beach_classification",
+      mode: "external_discovery_v12_beach_precision",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -252,7 +252,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v13_beach_classification",
+      mode: "external_discovery_v12_beach_precision",
       checked_sources: diagnostics,
       results: []
     });
@@ -1342,25 +1342,19 @@ function extractBeachEvidence(text) {
     seaView: false,
     distanceMeters: null,
     precision: "unknown",
-    category: "unknown",
     labels: []
   };
 
-  const firstLinePatterns = [
+  const trueBeachfrontPatterns = [
     /първа линия/i,
     /1-ва линия/i,
     /на първа линия/i,
     /директно на плажа/i,
     /на самия плаж/i,
+    /на плажа/i,
     /beachfront/i,
-    /front line/i
-  ];
-
-  const seaViewPatterns = [
-    /гледка море/i,
-    /морска гледка/i,
-    /панорама море/i,
-    /sea view/i
+    /front line/i,
+    /first line/i
   ];
 
   const nearBeachPatterns = [
@@ -1368,30 +1362,51 @@ function extractBeachEvidence(text) {
     /близо до плажа/i,
     /до морето/i,
     /близо до морето/i,
-    /на метри от плажа/i
+    /на метри от плажа/i,
+    /near beach/i,
+    /close to beach/i
   ];
 
-  if (firstLinePatterns.some(p => p.test(normalized))) {
+  const seaViewPatterns = [
+    /гледка море/i,
+    /морска гледка/i,
+    /панорама море/i,
+    /панорамна морска гледка/i,
+    /sea view/i,
+    /view.*sea/i
+  ];
+
+  if (trueBeachfrontPatterns.some(pattern => pattern.test(normalized))) {
     evidence.beachfront = true;
     evidence.nearBeach = true;
-    evidence.category = "true_first_line";
-    evidence.precision = "true_first_line";
+    evidence.distanceMeters = 30;
+    evidence.precision = "true_beachfront";
     evidence.labels.push("първа линия");
   }
 
-  if (nearBeachPatterns.some(p => p.test(normalized))) {
+  if (nearBeachPatterns.some(pattern => pattern.test(normalized))) {
     evidence.nearBeach = true;
+    evidence.labels.push("близо до плаж");
+
+    if (evidence.precision === "unknown") {
+      evidence.precision = "near_beach";
+    }
   }
 
-  if (seaViewPatterns.some(p => p.test(normalized))) {
+  if (seaViewPatterns.some(pattern => pattern.test(normalized))) {
     evidence.seaView = true;
     evidence.labels.push("гледка море");
+
+    if (evidence.precision === "unknown") {
+      evidence.precision = "sea_view_only";
+    }
   }
 
   const distancePatterns = [
-    /([0-9]{1,4})\s*м\.?\s*от\s*(плажа|морето)/i,
-    /([0-9]{1,4})\s*метра\s*от\s*(плажа|морето)/i,
-    /на\s*([0-9]{1,4})\s*м\.?\s*от\s*(плажа|морето)/i
+    /([0-9]{1,4})\s*м\.?\s*от\s*(плажа|морето|брега)/i,
+    /([0-9]{1,4})\s*метра\s*от\s*(плажа|морето|брега)/i,
+    /на\s*([0-9]{1,4})\s*м\.?\s*от\s*(плажа|морето|брега)/i,
+    /([0-9]{1,4})\s*m\s*from\s*(beach|sea)/i
   ];
 
   for (const pattern of distancePatterns) {
@@ -1402,36 +1417,30 @@ function extractBeachEvidence(text) {
     const meters = Number(match[1]);
 
     if (meters > 0 && meters < 5000) {
-      evidence.distanceMeters = meters;
+      evidence.distanceMeters = evidence.distanceMeters
+        ? Math.min(evidence.distanceMeters, meters)
+        : meters;
+
       evidence.labels.push(`${meters} м от плажа`);
 
       if (meters <= 80) {
-        evidence.category = "true_first_line";
-        evidence.precision = "true_first_line";
-        evidence.beachfront = true;
-      }
-      else if (meters <= 250) {
-        evidence.category = "near_beach";
-        evidence.precision = "near_beach";
-      }
-      else if (meters <= 700) {
-        evidence.category = "walking_distance";
-        evidence.precision = "walking_distance";
-      }
-      else {
-        evidence.category = "far_from_beach";
-        evidence.precision = "far_from_beach";
+        evidence.beachfront = evidence.beachfront || true;
+        evidence.nearBeach = true;
+        evidence.precision = evidence.precision === "true_beachfront" ? "true_beachfront" : "very_near_beach";
+      } else if (meters <= 250) {
+        evidence.nearBeach = true;
+
+        if (evidence.precision === "unknown" || evidence.precision === "sea_view_only") {
+          evidence.precision = "near_beach";
+        }
+      } else if (meters >= 400) {
+        if (evidence.precision !== "true_beachfront") {
+          evidence.precision = "far_from_beach";
+        }
       }
 
       break;
     }
-  }
-
-  if (
-    evidence.category === "unknown" &&
-    evidence.nearBeach
-  ) {
-    evidence.category = "near_beach";
   }
 
   evidence.labels = [...new Set(evidence.labels)];
@@ -1462,36 +1471,24 @@ function scoreBeachIntent(text, queryIntent) {
   */
 
   if (intent.wantsFirstLine) {
-
-    if (evidence.category === "true_first_line") {
-      score += 80;
+    if (evidence.beachfront && evidence.precision === "true_beachfront") {
+      score += 60;
       reasons.push("потвърдена е истинска първа линия");
-    }
-
-    else if (evidence.category === "near_beach") {
-      score += 12;
-      reasons.push("близо е до плажа, но не е първа линия");
-    }
-
-    else if (evidence.category === "walking_distance") {
-      score -= 45;
-
-      reasons.push(
-        `твърде далеч за първа линия (${evidence.distanceMeters || "неизвестно"} м)`
-      );
-    }
-
-    else if (evidence.category === "far_from_beach") {
-      score -= 90;
-
-      reasons.push(
-        `имотът е далеч от плажа (${evidence.distanceMeters || "неизвестно"} м)`
-      );
-    }
-
-    else {
-      score -= 35;
-      reasons.push("няма доказателство за първа линия");
+    } else if (evidence.precision === "very_near_beach") {
+      score += 22;
+      reasons.push(`много близо до плажа, но не е ясно потвърдена първа линия${evidence.distanceMeters ? ": " + evidence.distanceMeters + " м" : ""}`);
+    } else if (evidence.precision === "near_beach") {
+      score += 8;
+      reasons.push("има близост до плаж, но това не доказва първа линия");
+    } else if (evidence.precision === "sea_view_only") {
+      score -= 18;
+      reasons.push("има морска гледка, но това не е доказателство за първа линия");
+    } else if (evidence.precision === "far_from_beach") {
+      score -= 55;
+      reasons.push(`не е първа линия — открито разстояние около ${evidence.distanceMeters} м`);
+    } else {
+      score -= 18;
+      reasons.push("първа линия не е потвърдена в текста");
     }
   }
 
@@ -1517,21 +1514,6 @@ function scoreBeachIntent(text, queryIntent) {
 
   if (evidence.labels.length) {
     reasons.push("морски признаци: " + evidence.labels.join(", "));
-  }
-
-  if (
-    intent.wantsFirstLine &&
-    evidence.category === "far_from_beach"
-  ) {
-    score -= 120;
-  }
-
-  if (
-    intent.wantsFirstLine &&
-    evidence.distanceMeters &&
-    evidence.distanceMeters >= 400
-  ) {
-    score -= 150;
   }
 
   return {
