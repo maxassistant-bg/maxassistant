@@ -158,7 +158,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v12_beach_precision",
+      mode: "external_discovery_v13_beach_rank",
       results: []
     });
   }
@@ -218,17 +218,15 @@ module.exports = async function handler(req, res) {
       diagnostics.push(diag);
     }
 
-    const results = deduplicateResults(allResults)
-      .sort((a, b) => {
-        if (b.source_priority !== a.source_priority) return b.source_priority - a.source_priority;
-        return b.score - a.score;
-      })
-      .slice(0, MAX_RESULTS);
+    const results = sortByBeachIntent(
+      deduplicateResults(allResults),
+      queryIntent
+    ).slice(0, MAX_RESULTS);
 
     const payload = {
       ok: true,
       query: q,
-      mode: "external_discovery_v12_beach_precision",
+      mode: "external_discovery_v13_beach_rank",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -252,7 +250,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v12_beach_precision",
+      mode: "external_discovery_v13_beach_rank",
       checked_sources: diagnostics,
       results: []
     });
@@ -353,6 +351,8 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
     beach_evidence: scored.beach_evidence || null,
+    beach_rank: scored.beach_rank || 999,
+    beach_precision_label: scored.beach_precision_label || "",
     score: Math.round(scored.score * 10) / 10
   };
 }
@@ -391,10 +391,12 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
 
   diag.fetched_detail_pages = uniqueListingUrls.length;
 
-  return detailPages
-    .filter(Boolean)
-    .filter(item => item.score >= MIN_PORTAL_SCORE)
-    .sort((a, b) => b.score - a.score)
+  return sortByBeachIntent(
+      detailPages
+        .filter(Boolean)
+        .filter(item => item.score >= MIN_PORTAL_SCORE),
+      queryIntent
+    )
     .slice(0, 4);
 }
 
@@ -499,6 +501,8 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
     beach_evidence: scored.beach_evidence || null,
+    beach_rank: scored.beach_rank || 999,
+    beach_precision_label: scored.beach_precision_label || "",
     score: Math.round(scored.score * 10) / 10
   };
 }
@@ -645,11 +649,20 @@ function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
     reasons.push(...beachScore.reasons);
   }
 
+  const beachRank = getBeachRank(beachScore.evidence, queryIntent);
+  const beachPrecisionLabel = getBeachPrecisionLabel(beachRank);
+
+  if (beachPrecisionLabel) {
+    reasons.push("beach precision: " + beachPrecisionLabel);
+  }
+
   return {
     score,
     reasons,
     features,
-    beach_evidence: beachScore.evidence
+    beach_evidence: beachScore.evidence,
+    beach_rank: beachRank,
+    beach_precision_label: beachPrecisionLabel
   };
 }
 
@@ -1446,6 +1459,100 @@ function extractBeachEvidence(text) {
   evidence.labels = [...new Set(evidence.labels)];
 
   return evidence;
+}
+
+
+function getBeachRank(evidence, queryIntent) {
+  const intent = analyzeBeachIntent(queryIntent);
+
+  if (!intent.hasBeachIntent) {
+    return 999;
+  }
+
+  if (intent.wantsFirstLine) {
+    if (evidence && evidence.beachfront && evidence.precision === "true_beachfront") {
+      return 1;
+    }
+
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters <= 80) {
+      return 2;
+    }
+
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters <= 180) {
+      return 3;
+    }
+
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters <= 300) {
+      return 4;
+    }
+
+    if (evidence && evidence.seaView) {
+      return 5;
+    }
+
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters >= 400) {
+      return 8;
+    }
+
+    return 9;
+  }
+
+  if (intent.wantsNearBeach) {
+    if (evidence && evidence.beachfront) return 1;
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters <= 150) return 2;
+    if (evidence && evidence.distanceMeters !== null && evidence.distanceMeters <= 300) return 3;
+    if (evidence && evidence.nearBeach) return 4;
+    if (evidence && evidence.seaView) return 5;
+    return 9;
+  }
+
+  if (intent.wantsSeaView) {
+    if (evidence && evidence.seaView) return 1;
+    if (evidence && evidence.beachfront) return 2;
+    return 9;
+  }
+
+  return 999;
+}
+
+function getBeachPrecisionLabel(rank) {
+  if (rank === 1) return "първа линия / на плажа";
+  if (rank === 2) return "до 80 м от плажа";
+  if (rank === 3) return "до 180 м от плажа";
+  if (rank === 4) return "до 300 м от плажа";
+  if (rank === 5) return "само морска гледка / непотвърдена първа линия";
+  if (rank === 8) return "далеч от първа линия";
+  if (rank === 9) return "първа линия не е потвърдена";
+  return "";
+}
+
+function sortByBeachIntent(results, queryIntent) {
+  const intent = analyzeBeachIntent(queryIntent);
+
+  if (!intent.hasBeachIntent) {
+    return results.sort((a, b) => {
+      if (b.source_priority !== a.source_priority) {
+        return b.source_priority - a.source_priority;
+      }
+
+      return b.score - a.score;
+    });
+  }
+
+  return results.sort((a, b) => {
+    const aRank = Number(a.beach_rank || 999);
+    const bRank = Number(b.beach_rank || 999);
+
+    if (aRank !== bRank) {
+      return aRank - bRank;
+    }
+
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+
+    return b.source_priority - a.source_priority;
+  });
 }
 
 function scoreBeachIntent(text, queryIntent) {
