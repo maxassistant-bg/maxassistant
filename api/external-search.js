@@ -158,7 +158,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v11_cached_beach_intent",
+      mode: "external_discovery_v12_beach_precision",
       results: []
     });
   }
@@ -228,7 +228,7 @@ module.exports = async function handler(req, res) {
     const payload = {
       ok: true,
       query: q,
-      mode: "external_discovery_v11_cached_beach_intent",
+      mode: "external_discovery_v12_beach_precision",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -252,7 +252,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v11_cached_beach_intent",
+      mode: "external_discovery_v12_beach_precision",
       checked_sources: diagnostics,
       results: []
     });
@@ -1302,6 +1302,8 @@ function analyzeBeachIntent(queryIntent) {
     "1-ва линия",
     "1 линия",
     "на първа линия",
+    "директно на плажа",
+    "на плажа",
     "front line",
     "beachfront"
   ].some(term => queryText.includes(normalize(term)));
@@ -1335,28 +1337,69 @@ function extractBeachEvidence(text) {
   const normalized = normalize(text);
 
   const evidence = {
-    firstLine: false,
-    seaView: false,
+    beachfront: false,
     nearBeach: false,
+    seaView: false,
     distanceMeters: null,
+    precision: "unknown",
     labels: []
   };
 
-  if (/първа линия|1-ва линия|1 линия|на първа линия|front line|beachfront/i.test(normalized)) {
-    evidence.firstLine = true;
+  const trueBeachfrontPatterns = [
+    /първа линия/i,
+    /1-ва линия/i,
+    /на първа линия/i,
+    /директно на плажа/i,
+    /на самия плаж/i,
+    /на плажа/i,
+    /beachfront/i,
+    /front line/i,
+    /first line/i
+  ];
+
+  const nearBeachPatterns = [
+    /до плажа/i,
+    /близо до плажа/i,
+    /до морето/i,
+    /близо до морето/i,
+    /на метри от плажа/i,
+    /near beach/i,
+    /close to beach/i
+  ];
+
+  const seaViewPatterns = [
+    /гледка море/i,
+    /морска гледка/i,
+    /панорама море/i,
+    /панорамна морска гледка/i,
+    /sea view/i,
+    /view.*sea/i
+  ];
+
+  if (trueBeachfrontPatterns.some(pattern => pattern.test(normalized))) {
+    evidence.beachfront = true;
     evidence.nearBeach = true;
-    evidence.distanceMeters = 50;
+    evidence.distanceMeters = 30;
+    evidence.precision = "true_beachfront";
     evidence.labels.push("първа линия");
   }
 
-  if (/гледка море|морска гледка|панорама море|sea view|view.*sea/i.test(normalized)) {
-    evidence.seaView = true;
-    evidence.labels.push("гледка море");
-  }
-
-  if (/до плажа|близо до плажа|до морето|близо до морето|на метри от плажа|near beach/i.test(normalized)) {
+  if (nearBeachPatterns.some(pattern => pattern.test(normalized))) {
     evidence.nearBeach = true;
     evidence.labels.push("близо до плаж");
+
+    if (evidence.precision === "unknown") {
+      evidence.precision = "near_beach";
+    }
+  }
+
+  if (seaViewPatterns.some(pattern => pattern.test(normalized))) {
+    evidence.seaView = true;
+    evidence.labels.push("гледка море");
+
+    if (evidence.precision === "unknown") {
+      evidence.precision = "sea_view_only";
+    }
   }
 
   const distancePatterns = [
@@ -1369,23 +1412,34 @@ function extractBeachEvidence(text) {
   for (const pattern of distancePatterns) {
     const match = normalized.match(pattern);
 
-    if (match) {
-      const meters = Number(match[1]);
+    if (!match) continue;
 
-      if (meters > 0 && meters < 5000) {
-        evidence.distanceMeters = evidence.distanceMeters
-          ? Math.min(evidence.distanceMeters, meters)
-          : meters;
+    const meters = Number(match[1]);
 
-        if (meters <= 150) {
-          evidence.nearBeach = true;
-          evidence.labels.push(`${meters} м от плажа`);
-        } else {
-          evidence.labels.push(`${meters} м от плажа`);
+    if (meters > 0 && meters < 5000) {
+      evidence.distanceMeters = evidence.distanceMeters
+        ? Math.min(evidence.distanceMeters, meters)
+        : meters;
+
+      evidence.labels.push(`${meters} м от плажа`);
+
+      if (meters <= 80) {
+        evidence.beachfront = evidence.beachfront || true;
+        evidence.nearBeach = true;
+        evidence.precision = evidence.precision === "true_beachfront" ? "true_beachfront" : "very_near_beach";
+      } else if (meters <= 250) {
+        evidence.nearBeach = true;
+
+        if (evidence.precision === "unknown" || evidence.precision === "sea_view_only") {
+          evidence.precision = "near_beach";
         }
-
-        break;
+      } else if (meters >= 400) {
+        if (evidence.precision !== "true_beachfront") {
+          evidence.precision = "far_from_beach";
+        }
       }
+
+      break;
     }
   }
 
@@ -1396,36 +1450,44 @@ function extractBeachEvidence(text) {
 
 function scoreBeachIntent(text, queryIntent) {
   const intent = analyzeBeachIntent(queryIntent);
+  const evidence = extractBeachEvidence(text);
 
   if (!intent.hasBeachIntent) {
     return {
       score: 0,
       reasons: [],
-      evidence: extractBeachEvidence(text)
+      evidence
     };
   }
 
-  const evidence = extractBeachEvidence(text);
   let score = 0;
   const reasons = [];
 
+  /*
+    ВАЖНО:
+    "гледка море" НЕ Е "първа линия".
+    "до плажа" НЕ Е задължително "първа линия".
+    Истински beachfront boost се дава само при ясно доказателство.
+  */
+
   if (intent.wantsFirstLine) {
-    if (evidence.firstLine) {
-      score += 38;
-      reasons.push("потвърдено е търсенето за първа линия");
-    } else if (evidence.distanceMeters !== null) {
-      if (evidence.distanceMeters <= 120) {
-        score += 20;
-        reasons.push(`имотът е много близо до плажа: ${evidence.distanceMeters} м`);
-      } else if (evidence.distanceMeters >= 400) {
-        score -= 38;
-        reasons.push(`не е първа линия — открито разстояние около ${evidence.distanceMeters} м`);
-      } else {
-        score -= 12;
-        reasons.push(`не е потвърдена първа линия — открито разстояние около ${evidence.distanceMeters} м`);
-      }
+    if (evidence.beachfront && evidence.precision === "true_beachfront") {
+      score += 60;
+      reasons.push("потвърдена е истинска първа линия");
+    } else if (evidence.precision === "very_near_beach") {
+      score += 22;
+      reasons.push(`много близо до плажа, но не е ясно потвърдена първа линия${evidence.distanceMeters ? ": " + evidence.distanceMeters + " м" : ""}`);
+    } else if (evidence.precision === "near_beach") {
+      score += 8;
+      reasons.push("има близост до плаж, но това не доказва първа линия");
+    } else if (evidence.precision === "sea_view_only") {
+      score -= 18;
+      reasons.push("има морска гледка, но това не е доказателство за първа линия");
+    } else if (evidence.precision === "far_from_beach") {
+      score -= 55;
+      reasons.push(`не е първа линия — открито разстояние около ${evidence.distanceMeters} м`);
     } else {
-      score -= 10;
+      score -= 18;
       reasons.push("първа линия не е потвърдена в текста");
     }
   }
@@ -1441,11 +1503,11 @@ function scoreBeachIntent(text, queryIntent) {
   }
 
   if (intent.wantsNearBeach && !intent.wantsFirstLine) {
-    if (evidence.nearBeach || (evidence.distanceMeters !== null && evidence.distanceMeters <= 300)) {
-      score += 20;
+    if (evidence.beachfront || evidence.nearBeach || (evidence.distanceMeters !== null && evidence.distanceMeters <= 300)) {
+      score += 22;
       reasons.push("има потвърждение за близост до плаж/море");
     } else if (evidence.distanceMeters !== null && evidence.distanceMeters >= 600) {
-      score -= 20;
+      score -= 22;
       reasons.push(`по-слабо съвпадение за близост до море — около ${evidence.distanceMeters} м`);
     }
   }
@@ -1460,6 +1522,7 @@ function scoreBeachIntent(text, queryIntent) {
     evidence
   };
 }
+
 
 /* =========================
    BASIC UTILS
