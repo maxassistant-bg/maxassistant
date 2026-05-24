@@ -869,6 +869,140 @@ function buildExternalDebugHtml(data, query) {
   `;
 }
 
+
+
+function externalExtractPrice(text) {
+  const value = String(text || "");
+  const patterns = [
+    /([0-9]{2,3}(?:\s?[0-9]{3})+|[0-9]{5,7})\s*(€|eur|евро)/i,
+    /(€|eur|евро)\s*([0-9]{2,3}(?:\s?[0-9]{3})+|[0-9]{5,7})/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+
+    const raw = match[1] && /[0-9]/.test(match[1]) ? match[1] : match[2];
+    const price = Number(String(raw).replace(/\s+/g, ""));
+
+    if (price > 10000 && price < 3000000) {
+      return price;
+    }
+  }
+
+  return null;
+}
+
+function externalExtractArea(text) {
+  const value = String(text || "");
+  const match = value.match(/([0-9]{2,4}(?:[.,][0-9]{1,2})?)\s*(кв\.?\s*м|кв м|m2|m²)/i);
+
+  if (!match) return null;
+
+  const area = Number(String(match[1]).replace(",", "."));
+
+  if (area > 10 && area < 1000) {
+    return area;
+  }
+
+  return null;
+}
+
+function externalExtractRooms(text) {
+  const value = String(text || "").toLowerCase();
+
+  if (/студио|едностаен|studio/.test(value)) return "1";
+  if (/двустаен|една спалня|1 спалня|one bedroom/.test(value)) return "2";
+  if (/тристаен|две спални|2 спални|two bedroom/.test(value)) return "3";
+
+  return "";
+}
+
+function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
+
+  const combinedText = [
+    result.title,
+    result.excerpt,
+    result.match_reason,
+    result.feature_labels
+  ].filter(Boolean).join(" ");
+
+  const price = externalExtractPrice(combinedText);
+  const area = externalExtractArea(combinedText);
+  const rooms = externalExtractRooms(combinedText);
+
+  return {
+    image: result.image || "",
+    price: price || "",
+    area: area || "",
+    rooms: rooms || "",
+    floor: "",
+    view: result.feature_labels || "",
+    property_type: result.type || "Външна обява",
+    complex: result.title || "Външен резултат",
+    location: fallbackLocation || "Външен източник",
+    building: result.source || "",
+    url: result.url || "",
+    source: result.source || "Външен източник",
+    score: result.score || 0,
+    reasons: [
+      result.match_reason || "Външен discovery резултат",
+      result.beach_precision_label || ""
+    ].filter(Boolean),
+    aiAnswer: result.excerpt ? [result.excerpt] : [],
+    complexInfo: null,
+    furnishing_status: "",
+    price_per_m2: price && area ? Math.round(price / area) : "",
+    construction_stage: "",
+    completion_status: "",
+    beach_line: result.beach_precision_label || "",
+    maintenance_fee: "",
+    bathrooms: "",
+    toilets: "",
+    balconies: "",
+    storage_room: false,
+    walk_in_closet: false,
+    basement: false,
+    _matchLabel: "External opportunity"
+  };
+}
+
+function renderExternalResultsAsUnifiedCards(results, data) {
+
+  const fallbackLocation =
+    data.detected_location ||
+    (Array.isArray(data.detected_locations)
+      ? data.detected_locations[0]
+      : "");
+
+  const normalized =
+    results.map(item =>
+      normalizeExternalResultAsProperty(
+        item,
+        fallbackLocation
+      )
+    );
+
+  return `
+    <div class="grouped-results-section">
+
+      <div class="result-group-title">
+        <h2>Допълнителни възможности от външни източници</h2>
+
+        <p>
+          Това са secondary discovery резултати от външните източници,
+          визуализирани със същите property cards като локалната база.
+        </p>
+      </div>
+
+      ${normalized.map(item => renderPropertyCard(item)).join("")}
+
+      ${buildExternalDebugHtml(data)}
+    </div>
+  `;
+}
+
+
 /* Външно търсене */
 function buildExternalSearchQuery(filters) {
   const parts = [];
@@ -922,52 +1056,11 @@ async function searchExternalSources(query, decision = null) {
 
     const limitedResults = data.results.slice(0, 5);
 
-    externalBox.innerHTML = `
-      <div class="card external-search-card">
-        <span class="external-decision-label">External opportunities</span>
-        <h3>Допълнителни възможности от външни източници</h3>
-        <p>
-          Това са вторични discovery резултати от одобрените външни източници.
-          Те не изместват NewHome базата, а служат като допълнителен пазарен ориентир.
-        </p>
-
-        <div class="external-results-grid">
-          ${limitedResults.map(result => `
-            <div class="external-result-item">
-
-              ${result.image ? `
-                <img src="${result.image}" alt="${result.title}" class="external-result-image" onerror="this.remove()">
-              ` : ""}
-
-              <div class="external-result-content">
-                <div class="external-result-source">
-                  ${result.source || "Външен източник"}
-                </div>
-
-                <h4>${result.title || "Външен резултат"}</h4>
-
-                ${result.excerpt ? `
-                  <p>${result.excerpt}</p>
-                ` : ""}
-
-                ${result.match_reason ? `
-                  <p class="external-match-reason">
-                    <strong>Защо MaxAssistant го показва:</strong> ${result.match_reason}
-                  </p>
-                ` : ""}
-
-                <a href="${result.url}" target="_blank" class="button external-result-link">
-                  Отвори
-                </a>
-              </div>
-
-            </div>
-          `).join("")}
-        </div>
-
-        ${buildExternalDebugHtml(data, query)}
-      </div>
-    `;
+    externalBox.innerHTML =
+      renderExternalResultsAsUnifiedCards(
+        limitedResults,
+        data
+      );
   } catch (error) {
     console.error("External search error:", error);
 
