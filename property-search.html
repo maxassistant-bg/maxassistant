@@ -192,6 +192,33 @@
   max-width: 820px;
 }
 
+
+.external-debug-box {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(192, 108, 255, 0.22);
+}
+
+.external-debug-box summary {
+  cursor: pointer;
+  color: #d8b8ff;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.external-debug-box pre {
+  margin-top: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 </style>
 
 </head>
@@ -799,6 +826,49 @@ function handleExternalDiscovery(localResults, externalQuery) {
 }
 
 
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function buildExternalDebugHtml(data, query) {
+  if (!data) return "";
+
+  const debugPayload = {
+    query,
+    ok: data.ok,
+    mode: data.mode,
+    total: data.total,
+    detected_location: data.detected_location || data.detected_locations || null,
+    detected_property_type: data.detected_property_type || null,
+    budget: data.budget || null,
+    min_area: data.min_area || null,
+    checked_sources: data.checked_sources || [],
+    first_results: (data.results || []).slice(0, 3).map(item => ({
+      source: item.source,
+      title: item.title,
+      url: item.url,
+      score: item.score,
+      type: item.type,
+      reason: item.match_reason
+    })),
+    error: data.error || null,
+    message: data.message || null
+  };
+
+  return `
+    <details class="external-debug-box">
+      <summary>Debug: External discovery response</summary>
+      <pre>${escapeHtml(JSON.stringify(debugPayload, null, 2))}</pre>
+    </details>
+  `;
+}
+
 /* Външно търсене */
 function buildExternalSearchQuery(filters) {
   const parts = [];
@@ -844,6 +914,7 @@ async function searchExternalSources(query, decision = null) {
           <span class="external-decision-label">External discovery layer</span>
           <h3>Няма надеждни външни резултати</h3>
           <p>MaxAssistant провери външния слой, но не намери достатъчно надеждни допълнителни възможности. Локалните резултати от NewHome остават водещи.</p>
+          ${buildExternalDebugHtml(data, query)}
         </div>
       `;
       return;
@@ -893,6 +964,8 @@ async function searchExternalSources(query, decision = null) {
             </div>
           `).join("")}
         </div>
+
+        ${buildExternalDebugHtml(data, query)}
       </div>
     `;
   } catch (error) {
@@ -903,6 +976,12 @@ async function searchExternalSources(query, decision = null) {
         <span class="external-decision-label">External discovery layer</span>
         <h3>Външното търсене временно не е достъпно</h3>
         <p>Локалната AI търсачка работи нормално. MaxAssistant запази резултатите от NewHome базата и ще може да провери външния слой отново по-късно.</p>
+        ${buildExternalDebugHtml({
+          ok: false,
+          message: "Frontend catch error",
+          error: error.message,
+          checked_sources: []
+        }, query)}
       </div>
     `;
   }
