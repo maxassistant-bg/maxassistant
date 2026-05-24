@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v8_fixed_alo_location_ids",
+      mode: "external_discovery_v9_feature_extraction",
       results: []
     });
   }
@@ -146,7 +146,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "external_discovery_v8_fixed_alo_location_ids",
+      mode: "external_discovery_v9_feature_extraction",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v8_fixed_alo_location_ids",
+      mode: "external_discovery_v9_feature_extraction",
       checked_sources: diagnostics,
       results: []
     });
@@ -258,7 +258,9 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     type: "newhome_trusted_site_result",
     real_property_match: true,
     has_table: detail.hasTable,
-    match_reason: scored.reasons.slice(0, 5).join("; "),
+    match_reason: scored.reasons.slice(0, 6).join("; "),
+    features: scored.features || [],
+    feature_labels: formatFeatureLabels(scored.features || []),
     score: Math.round(scored.score * 10) / 10
   };
 }
@@ -401,7 +403,9 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
     type: "external_portal_listing_detail",
     real_property_match: true,
     has_table: detail.hasTable,
-    match_reason: scored.reasons.slice(0, 5).join("; "),
+    match_reason: scored.reasons.slice(0, 6).join("; "),
+    features: scored.features || [],
+    feature_labels: formatFeatureLabels(scored.features || []),
     score: Math.round(scored.score * 10) / 10
   };
 }
@@ -453,6 +457,10 @@ function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
 
   let score = baseScore;
   const reasons = [];
+  const features = extractListingFeatures(all);
+  const featureMatch = scoreFeatureMatches(features, queryIntent);
+
+  score += featureMatch.score;
 
   if (mode === "trusted_site") {
     reasons.push("резултатът е от NewHome Bulgaria като доверен site discovery layer");
@@ -534,7 +542,11 @@ function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
     score -= 35;
   }
 
-  return { score, reasons };
+  if (featureMatch.reasons.length) {
+    reasons.push(...featureMatch.reasons);
+  }
+
+  return { score, reasons, features };
 }
 
 /* =========================
@@ -970,6 +982,207 @@ function extractLocs(xml) {
   }
 
   return locs;
+}
+
+
+/* =========================
+   FEATURE EXTRACTION LAYER
+========================= */
+
+function extractListingFeatures(text) {
+  const normalized = normalize(text);
+  const features = [];
+
+  const rules = [
+    {
+      key: "first_line",
+      label: "първа линия",
+      patterns: [
+        /първа линия/i,
+        /1-ва линия/i,
+        /на първа линия/i,
+        /front line/i,
+        /beachfront/i
+      ]
+    },
+    {
+      key: "sea_view",
+      label: "гледка море",
+      patterns: [
+        /гледка море/i,
+        /морска гледка/i,
+        /панорама море/i,
+        /sea view/i,
+        /view.*sea/i
+      ]
+    },
+    {
+      key: "near_beach",
+      label: "близо до плаж",
+      patterns: [
+        /до плажа/i,
+        /близо до плажа/i,
+        /на метри от плажа/i,
+        /[0-9]{1,4}\s*м\.?\s*от плажа/i,
+        /near beach/i
+      ]
+    },
+    {
+      key: "furnished",
+      label: "обзаведен",
+      patterns: [
+        /обзаведен/i,
+        /напълно обзаведен/i,
+        /с мебели/i,
+        /furnished/i
+      ]
+    },
+    {
+      key: "no_maintenance_fee",
+      label: "без такса поддръжка",
+      patterns: [
+        /без такса поддръжка/i,
+        /без такса/i,
+        /no maintenance fee/i
+      ]
+    },
+    {
+      key: "act16",
+      label: "Акт 16",
+      patterns: [
+        /акт 16/i,
+        /act 16/i,
+        /разрешение за ползване/i
+      ]
+    },
+    {
+      key: "pool",
+      label: "басейн",
+      patterns: [
+        /басейн/i,
+        /pool/i
+      ]
+    },
+    {
+      key: "parking",
+      label: "паркинг",
+      patterns: [
+        /паркинг/i,
+        /паркомясто/i,
+        /parking/i
+      ]
+    },
+    {
+      key: "luxury",
+      label: "лукс",
+      patterns: [
+        /лукс/i,
+        /луксозен/i,
+        /luxury/i
+      ]
+    }
+  ];
+
+  for (const rule of rules) {
+    if (rule.patterns.some(pattern => pattern.test(normalized))) {
+      features.push({
+        key: rule.key,
+        label: rule.label
+      });
+    }
+  }
+
+  return deduplicateFeatures(features);
+}
+
+function deduplicateFeatures(features) {
+  const seen = new Set();
+
+  return features.filter(feature => {
+    if (!feature || !feature.key || seen.has(feature.key)) {
+      return false;
+    }
+
+    seen.add(feature.key);
+    return true;
+  });
+}
+
+function scoreFeatureMatches(features, queryIntent) {
+  const queryText = normalize(queryIntent.original || "");
+  let score = 0;
+  const reasons = [];
+
+  const wantedFeatures = [
+    {
+      key: "first_line",
+      label: "първа линия",
+      triggers: ["първа линия", "1-ва линия", "до морето", "front line", "beachfront"]
+    },
+    {
+      key: "sea_view",
+      label: "гледка море",
+      triggers: ["гледка море", "морска гледка", "панорама море", "sea view"]
+    },
+    {
+      key: "near_beach",
+      label: "близо до плаж",
+      triggers: ["плаж", "близо до плажа", "до плажа", "на метри от плажа"]
+    },
+    {
+      key: "furnished",
+      label: "обзаведен",
+      triggers: ["обзаведен", "мебели", "готов за ползване"]
+    },
+    {
+      key: "no_maintenance_fee",
+      label: "без такса поддръжка",
+      triggers: ["без такса", "без такса поддръжка", "ниска такса"]
+    },
+    {
+      key: "act16",
+      label: "Акт 16",
+      triggers: ["акт 16", "разрешение за ползване", "готов имот"]
+    },
+    {
+      key: "pool",
+      label: "басейн",
+      triggers: ["басейн", "комплекс с басейн"]
+    },
+    {
+      key: "parking",
+      label: "паркинг",
+      triggers: ["паркинг", "паркомясто"]
+    }
+  ];
+
+  const featureKeys = new Set(features.map(feature => feature.key));
+
+  for (const wanted of wantedFeatures) {
+    const isRequested = wanted.triggers.some(trigger =>
+      queryText.includes(normalize(trigger))
+    );
+
+    if (isRequested && featureKeys.has(wanted.key)) {
+      score += 18;
+      reasons.push("съвпада с търсен признак: " + wanted.label);
+    }
+  }
+
+  if (features.length) {
+    score += Math.min(features.length * 3, 12);
+    reasons.push("извлечени признаци: " + features.map(feature => feature.label).join(", "));
+  }
+
+  return {
+    score,
+    reasons
+  };
+}
+
+function formatFeatureLabels(features) {
+  if (!features || !features.length) return "";
+  return features.map(feature => feature.label).join(", ");
 }
 
 /* =========================
