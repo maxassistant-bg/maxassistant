@@ -158,7 +158,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v13_structured_property",
+      mode: "external_discovery_v12_beach_precision",
       results: []
     });
   }
@@ -228,7 +228,7 @@ module.exports = async function handler(req, res) {
     const payload = {
       ok: true,
       query: q,
-      mode: "external_discovery_v13_structured_property",
+      mode: "external_discovery_v12_beach_precision",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -252,7 +252,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v13_structured_property",
+      mode: "external_discovery_v12_beach_precision",
       checked_sources: diagnostics,
       results: []
     });
@@ -337,15 +337,6 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
 
   if (scored.score < MIN_NEWHOME_SCORE) return null;
 
-  const property = buildStructuredPropertyFromDetail({
-    detail,
-    url,
-    source,
-    scored,
-    queryIntent,
-    mode: "trusted_site"
-  });
-
   return {
     title: detail.title,
     url,
@@ -362,7 +353,6 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
     beach_evidence: scored.beach_evidence || null,
-    property,
     score: Math.round(scored.score * 10) / 10
   };
 }
@@ -493,15 +483,6 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
 
   if (scored.score < MIN_PORTAL_SCORE) return null;
 
-  const property = buildStructuredPropertyFromDetail({
-    detail,
-    url,
-    source,
-    scored,
-    queryIntent,
-    mode: "portal"
-  });
-
   return {
     title: detail.title,
     url,
@@ -518,246 +499,8 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
     beach_evidence: scored.beach_evidence || null,
-    property,
     score: Math.round(scored.score * 10) / 10
   };
-}
-
-
-/* =========================
-   STRUCTURED PROPERTY NORMALIZATION
-========================= */
-
-function buildStructuredPropertyFromDetail({
-  detail,
-  url,
-  source,
-  scored,
-  queryIntent,
-  mode
-}) {
-  const allText = normalize([
-    detail.title,
-    detail.description,
-    detail.excerpt,
-    detail.clean,
-    detail.tableText,
-    url
-  ].join(" "));
-
-  const location =
-    queryIntent.location ? queryIntent.location.canonical : extractLocationFromText(allText);
-
-  const propertyType =
-    queryIntent.propertyType ? queryIntent.propertyType.canonical : extractPropertyTypeFromText(allText);
-
-  const rooms =
-    queryIntent.rooms || extractRoomsFromText(allText);
-
-  const view =
-    extractViewFromText(allText, scored);
-
-  const beachLine =
-    scored && scored.beach_evidence
-      ? getBeachLineLabel(scored.beach_evidence)
-      : "";
-
-  const reasons = [
-    ...(scored && scored.reasons ? scored.reasons.slice(0, 6) : []),
-    source && source.name ? "Източник: " + source.name : ""
-  ].filter(Boolean);
-
-  return {
-    image: detail.image || "",
-    price: detail.price || "",
-    area: detail.area || "",
-    rooms: rooms || "",
-    floor: extractFloorFromText(allText),
-    view: view || "",
-    property_type: propertyType || "Външна обява",
-    complex: extractComplexName(detail.title, allText) || detail.title || "Външен резултат",
-    location: location || "Външен източник",
-    building: source && source.name ? source.name : "",
-    url: url || "",
-    source: source && source.name ? source.name : "Външен източник",
-    score: scored && scored.score ? Math.round(scored.score * 10) / 10 : 0,
-    reasons,
-    aiAnswer: detail.excerpt ? [detail.excerpt] : [],
-    complexInfo: null,
-    furnishing_status: extractFurnishingStatus(allText),
-    price_per_m2: detail.price && detail.area ? Math.round(detail.price / detail.area) : "",
-    construction_stage: extractConstructionStage(allText),
-    completion_status: "",
-    beach_line: beachLine,
-    beach_distance_meters: scored && scored.beach_evidence ? scored.beach_evidence.distanceMeters || "" : "",
-    maintenance_fee: extractMaintenanceFee(allText),
-    bathrooms: "",
-    toilets: "",
-    balconies: "",
-    storage_room: false,
-    walk_in_closet: false,
-    basement: false,
-    _matchLabel: mode === "trusted_site" ? "NewHome trusted discovery" : "External opportunity"
-  };
-}
-
-function extractLocationFromText(text) {
-  const locations = KNOWN_LOCATIONS || [];
-  const found = locations.find(location =>
-    location.aliases.some(alias => text.includes(normalize(alias)))
-  );
-
-  return found ? found.canonical : "";
-}
-
-function extractPropertyTypeFromText(text) {
-  const found = PROPERTY_TYPE_RULES.find(type =>
-    type.aliases.some(alias => text.includes(normalize(alias)))
-  );
-
-  return found ? found.canonical : "";
-}
-
-function extractRoomsFromText(text) {
-  if (/студио|едностаен|studio/.test(text)) return "1";
-  if (/двустаен|една спалня|1 спалня|one bedroom/.test(text)) return "2";
-  if (/тристаен|две спални|2 спални|two bedroom/.test(text)) return "3";
-  if (/четиристаен|три спални|3 спални/.test(text)) return "4";
-
-  return "";
-}
-
-function extractFloorFromText(text) {
-  const patterns = [
-    /етаж\s*([0-9]{1,2})/i,
-    /на\s*([0-9]{1,2})\s*етаж/i,
-    /floor\s*([0-9]{1,2})/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-
-    if (match) {
-      return match[1];
-    }
-  }
-
-  return "";
-}
-
-function extractViewFromText(text, scored) {
-  const labels = [];
-
-  if (/гледка море|морска гледка|панорама море|sea view/.test(text)) {
-    labels.push("гледка море");
-  }
-
-  if (/басейн|pool/.test(text)) {
-    labels.push("басейн");
-  }
-
-  if (scored && scored.beach_evidence && scored.beach_evidence.labels && scored.beach_evidence.labels.length) {
-    labels.push(...scored.beach_evidence.labels);
-  }
-
-  return [...new Set(labels)].join(", ");
-}
-
-function extractComplexName(title, text) {
-  const titleText = String(title || "").trim();
-
-  const complexPatterns = [
-    /комплекс\s+([a-zа-я0-9\s\-]+?)(?:,|\.|\||-|$)/i,
-    /к-с\s+([a-zа-я0-9\s\-]+?)(?:,|\.|\||-|$)/i,
-    /complex\s+([a-zа-я0-9\s\-]+?)(?:,|\.|\||-|$)/i
-  ];
-
-  for (const pattern of complexPatterns) {
-    const match = text.match(pattern);
-
-    if (match && match[1]) {
-      return cleanStructuredText(match[1]).slice(0, 80);
-    }
-  }
-
-  return titleText;
-}
-
-function extractFurnishingStatus(text) {
-  if (/напълно обзаведен|обзаведен|с мебели|furnished/.test(text)) {
-    return "обзаведен";
-  }
-
-  if (/необзаведен|без мебели/.test(text)) {
-    return "необзаведен";
-  }
-
-  return "";
-}
-
-function extractConstructionStage(text) {
-  if (/акт 16|разрешение за ползване|act 16/.test(text)) {
-    return "завършено с разрешение за ползване";
-  }
-
-  if (/в строеж|в строителство|строящ/.test(text)) {
-    return "в строителство";
-  }
-
-  if (/завършен|готов/.test(text)) {
-    return "завършено";
-  }
-
-  return "";
-}
-
-function extractMaintenanceFee(text) {
-  const patterns = [
-    /такса поддръжка\s*([0-9]+(?:[.,][0-9]+)?)\s*(евро|€|eur)/i,
-    /maintenance fee\s*([0-9]+(?:[.,][0-9]+)?)\s*(eur|€)/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-
-    if (match) {
-      return String(match[1]).replace(",", ".") + " €";
-    }
-  }
-
-  if (/без такса поддръжка|без такса/.test(text)) {
-    return "без такса поддръжка";
-  }
-
-  return "";
-}
-
-function getBeachLineLabel(evidence) {
-  if (!evidence) return "";
-
-  if (evidence.precision === "true_beachfront" || evidence.beachfront) {
-    return "първа линия";
-  }
-
-  if (evidence.distanceMeters) {
-    return evidence.distanceMeters + " м от плажа";
-  }
-
-  if (evidence.nearBeach) {
-    return "близо до плаж";
-  }
-
-  if (evidence.seaView) {
-    return "гледка море";
-  }
-
-  return "";
-}
-
-function cleanStructuredText(text) {
-  return String(text || "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /* =========================
