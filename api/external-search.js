@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v8_alo_location_ids",
+      mode: "external_discovery_v8_fixed_alo_location_ids",
       results: []
     });
   }
@@ -146,7 +146,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       query: q,
-      mode: "external_discovery_v8_alo_structured_location_search",
+      mode: "external_discovery_v8_fixed_alo_location_ids",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v8_alo_location_ids",
+      mode: "external_discovery_v8_fixed_alo_location_ids",
       checked_sources: diagnostics,
       results: []
     });
@@ -324,7 +324,334 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   const encodedLatin = encodeURIComponent(latinQuery);
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
+    const urls = [];
+
+    if (location && location.aloLocationId && location.aloRegionId) {
+      let structured = `https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?region_id=${location.aloRegionId}&location_ids=${location.aloLocationId}`;
+
+      if (propertyType && propertyType.aloTypeId) {
+        structured += `&p[413]=${propertyType.aloTypeId}`;
+      }
+
+      if (queryIntent.budget) {
+        structured += `&price=_${queryIntent.budget}_EUR`;
+      }
+
+      urls.push(structured);
+      urls.push(structured + "&order_by=price-asc");
+    }
+
+    urls.push(`https://www.alo.bg/searchq/?q=${encodedBg}`);
+    urls.push(`https://www.alo.bg/searchq/?q=${encodedLatin}`);
+    urls.push(`https://www.alo.bg/obiavi/imoti-prodajbi/apartamenti-stai/?q=${encodedBg}`);
+
+    return unique(urls);
+  }
+
+  if (source.domain === "imot.bg") {
+    return unique([
+      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedBg}`,
+      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedLatin}`
+    ]);
+  }
+
+  if (source.domain === "realistimo.com") {
+    return unique([
+      `https://realistimo.com/bg/buy?query=${encodedBg}`,
+      `https://realistimo.com/bg/buy?query=${encodedLatin}`
+    ]);
+  }
+
+  return [];
+}
+
+function extractListingUrlsFromSearchPage(source, html, pageUrl) {
+  const anchors = extractAnchors(html, pageUrl);
+
+  return anchors
+    .filter(a => !isBadAnchorTitle(a.text))
+    .filter(a => isAllowedUrl(a.url, source.domain))
+    .filter(a => isConcreteListingUrl(a.url, source))
+    .map(a => a.url);
+}
+
+async function fetchPortalListingDetail(source, url, queryIntent) {
+  const html = await fetchText(url);
+  if (!html) return null;
+
+  const detail = extractDetailFromHtml(html, url);
+
+  if (!isConcreteDetailPage(detail, url, source, queryIntent)) {
+    return null;
+  }
+
+  const scored = scoreDetailResult(detail, queryIntent, source, source.priority / 20, "portal");
+
+  if (scored.score < MIN_PORTAL_SCORE) return null;
+
+  return {
+    title: detail.title,
+    url,
+    image: detail.image,
+    excerpt: detail.excerpt,
+    source: source.name,
+    source_domain: source.domain,
+    source_type: source.type,
+    source_priority: source.priority,
+    type: "external_portal_listing_detail",
+    real_property_match: true,
+    has_table: detail.hasTable,
+    match_reason: scored.reasons.slice(0, 5).join("; "),
+    score: Math.round(scored.score * 10) / 10
+  };
+}
+
+/* =========================
+   DETAIL EXTRACTION + SCORING
+========================= */
+
+function extractDetailFromHtml(html, url) {
+  const title = cleanText(extractTitle(html) || cleanTitleFromUrl(url));
+  const description = cleanText(extractMeta(html, "description"));
+  const image = extractImage(html, url);
+  const tableText = extractTableText(html);
+  const clean = cleanText(stripHtml(html)).slice(0, 9000);
+
+  const price = extractPrice([title, description, clean, tableText].join(" "));
+  const area = extractArea([title, description, clean, tableText].join(" "));
+
+  const excerpt = makeDetailExcerpt({
+    title,
+    description,
+    clean,
+    tableText,
+    price,
+    area
+  });
+
+  return {
+    title,
+    description,
+    image,
+    tableText,
+    clean,
+    excerpt,
+    price,
+    area,
+    hasTable: Boolean(tableText)
+  };
+}
+
+function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
+  const all = normalize([
+    detail.title,
+    detail.description,
+    detail.excerpt,
+    detail.clean,
+    detail.tableText
+  ].join(" "));
+
+  let score = baseScore;
+  const reasons = [];
+
+  if (mode === "trusted_site") {
+    reasons.push("резултатът е от NewHome Bulgaria като доверен site discovery layer");
+    score += 25;
+  } else {
+    reasons.push(`резултатът е от ${source.name} като одобрен външен discovery източник`);
+  }
+
+  if (queryIntent.location) {
+    const ok = queryIntent.location.aliases.some(alias => all.includes(normalize(alias)));
+
+    if (ok) {
+      score += 40;
+      reasons.push("съвпада със зададената локация: " + queryIntent.location.canonical);
+    } else {
+      score -= mode === "trusted_site" ? 25 : 70;
+      reasons.push("локацията не е ясно потвърдена");
+    }
+  }
+
+  if (queryIntent.propertyType) {
+    const exactType = queryIntent.propertyType.aliases.some(alias => all.includes(normalize(alias)));
+    const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
+
+    if (conflictType) {
+      score -= mode === "trusted_site" ? 35 : 120;
+      reasons.push("открит е различен тип имот: " + conflictType);
+    } else if (exactType) {
+      score += 32;
+      reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
+    } else if (hasGeneralApartmentSignal(all)) {
+      score += mode === "trusted_site" ? 12 : 4;
+      reasons.push("има общ сигнал за апартамент, но типът трябва да се провери");
+    } else {
+      score -= 25;
+    }
+  }
+
+  if (queryIntent.budget) {
+    if (detail.price) {
+      if (detail.price <= queryIntent.budget) {
+        score += 30;
+        reasons.push("откритата цена е в бюджета");
+      } else {
+        score -= mode === "trusted_site" ? 18 : 45;
+        reasons.push("откритата цена е над бюджета");
+      }
+    }
+  }
+
+  if (queryIntent.minArea) {
+    if (detail.area) {
+      if (detail.area >= queryIntent.minArea) {
+        score += 14;
+        reasons.push("откритата площ е над минимума");
+      } else {
+        score -= 12;
+        reasons.push("откритата площ е под минимума");
+      }
+    }
+  }
+
+  if (detail.price) {
+    score += 16;
+    reasons.push("извлечена е конкретна цена");
+  }
+
+  if (detail.area) {
+    score += 14;
+    reasons.push("извлечена е конкретна площ");
+  }
+
+  if (detail.image) {
+    score += 5;
+    reasons.push("има открита снимка");
+  }
+
+  if (!hasGeneralApartmentSignal(all)) {
+    score -= 35;
+  }
+
+  return { score, reasons };
+}
+
+/* =========================
+   INTENT
+========================= */
+
+function parseQueryIntent(query) {
+  const normalized = normalize(query);
+
+  const location = KNOWN_LOCATIONS.find(item =>
+    item.aliases.some(alias => normalized.includes(normalize(alias)))
+  ) || null;
+
+  let propertyType = PROPERTY_TYPE_RULES.find(item =>
+    item.aliases.some(alias => normalized.includes(normalize(alias)))
+  ) || null;
+
+  const rooms = extractRooms(normalized);
+
+  if (!propertyType && rooms) {
+    propertyType = PROPERTY_TYPE_RULES.find(item => item.rooms === rooms) || null;
+  }
+
+  return {
+    original: query,
+    normalized,
+    location,
+    propertyType,
+    rooms,
+    budget: extractBudget(normalized),
+    minArea: extractMinArea(normalized)
+  };
+}
+
+function extractRooms(text) {
+  const match = String(text || "").match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+function extractBudget(text) {
+  const patterns = [
+    /до\s*([0-9\s]{4,8})\s*(евро|eur|€)/i,
+    /([0-9\s]{4,8})\s*(евро|eur|€)/i,
+    /\b([0-9]{5,7})\b/i
+  ];
+
+  for (const p of patterns) {
+    const m = String(text || "").match(p);
+    if (!m) continue;
+
+    const value = Number(String(m[1]).replace(/\s+/g, ""));
+
+    if (value > 10000 && value < 2000000) return value;
+  }
+
+  return null;
+}
+
+function extractMinArea(text) {
+  const match = String(text || "").match(/(?:от|минимална площ)\s*([0-9]{2,4})\s*(кв|кв\.м|m2|m²)?/i);
+
+  if (!match) return null;
+
+  const value = Number(match[1]);
+
+  return value > 10 && value < 1000 ? value : null;
+}
+
+function extractPrice(text) {
+  const patterns = [
+    /([0-9]{2,3}(?:\s?[0-9]{3})+|[0-9]{5,7})\s*(€|eur|евро)/i,
+    /(€|eur|евро)\s*([0-9]{2,3}(?:\s?[0-9]{3})+|[0-9]{5,7})/i
+  ];
+
+  for (const p of patterns) {
+    const m = String(text || "").match(p);
+    if (!m) continue;
+
+    const raw = m[1].match(/[0-9]/) ? m[1] : m[2];
+    const value = Number(String(raw).replace(/\s+/g, ""));
+
+    if (value > 10000 && value < 3000000) return value;
+  }
+
+  return null;
+}
+
+function extractArea(text) {
+  const match = String(text || "").match(/([0-9]{2,4}(?:[.,][0-9]{1,2})?)\s*(кв м|кв\.м|m2|m²)/i);
+
+  if (!match) return null;
+
+  const value = Number(String(match[1]).replace(",", "."));
+
+  return value > 10 && value < 1000 ? value : null;
+}
+
+function hasGeneralApartmentSignal(text) {
+  return /апартамент|студио|спалн|едностаен|двустаен|тристаен|жилищ|имот|етаж|продажба|продава/i.test(text);
+}
+
+/* =========================
+   URL RULES
+========================= */
+
+function isNewHomeRelevantUrl(url, queryIntent) {
+  const lower = normalize(url);
+
+  if (isGenericUrl(url)) return false;
+
+  const propertyLike = /listing|apartament|apartamenti|imot|nedvizhimi|prodazhba|kompleks|resort|residence|green-life|cascadas|city-residence|vista-verde|kasa-blanka|santa-marina/i.test(url);
+
+  if (!propertyLike) return false;
+
+  if (queryIntent.location) {
+    const hasLocation = queryIntent.location.aliases.some(alias => lower.includes(normalize(alias)));
+    if (hasLocation) return true;
   }
 
   if (queryIntent.propertyType) {
@@ -362,7 +689,7 @@ function isConcreteListingUrl(url, source) {
   }
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
   }
 
   if (source.domain === "imot.bg") {
@@ -480,7 +807,7 @@ function isLikelyListingUrl(url, source) {
   const lower = url.toLowerCase();
 
   if (source.domain === "alo.bg") {
-    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/.test(lower);
+    return /\/[a-z0-9а-я-]+-[0-9]{6,}\/?$/i.test(lower);
   }
 
   if (source.domain === "imot.bg") {
