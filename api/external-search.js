@@ -84,6 +84,73 @@ const MAX_DETAIL_FETCHES_PER_SOURCE = 10;
 const MIN_NEWHOME_SCORE = 42;
 const MIN_PORTAL_SCORE = 58;
 
+const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
+const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
+
+const externalDiscoveryCache =
+  globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
+  new Map();
+
+globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ = externalDiscoveryCache;
+
+
+function buildExternalCacheKey(query, queryIntent) {
+  const parts = [
+    normalize(query),
+    queryIntent.location ? queryIntent.location.canonical : "",
+    queryIntent.propertyType ? queryIntent.propertyType.canonical : "",
+    queryIntent.rooms || "",
+    queryIntent.budget || "",
+    queryIntent.minArea || ""
+  ];
+
+  return parts
+    .map(part => String(part || "").trim())
+    .filter(Boolean)
+    .join("|");
+}
+
+function getCachedExternalDiscovery(cacheKey) {
+  if (!cacheKey || !externalDiscoveryCache.has(cacheKey)) {
+    return null;
+  }
+
+  const cached = externalDiscoveryCache.get(cacheKey);
+
+  if (!cached || Date.now() - cached.createdAt > EXTERNAL_DISCOVERY_CACHE_TTL_MS) {
+    externalDiscoveryCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.payload;
+}
+
+function setCachedExternalDiscovery(cacheKey, payload) {
+  if (!cacheKey || !payload) return;
+
+  if (externalDiscoveryCache.size >= EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS) {
+    const firstKey = externalDiscoveryCache.keys().next().value;
+
+    if (firstKey) {
+      externalDiscoveryCache.delete(firstKey);
+    }
+  }
+
+  externalDiscoveryCache.set(cacheKey, {
+    createdAt: Date.now(),
+    payload
+  });
+}
+
+function getCacheAgeSeconds(cacheKey) {
+  const cached = externalDiscoveryCache.get(cacheKey);
+
+  if (!cached) return null;
+
+  return Math.round((Date.now() - cached.createdAt) / 1000);
+}
+
+
 module.exports = async function handler(req, res) {
   const q = String(req.query.q || "").trim();
 
@@ -91,7 +158,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       ok: false,
       message: "Missing search query",
-      mode: "external_discovery_v9_feature_extraction",
+      mode: "external_discovery_v10_cached_feature_extraction",
       results: []
     });
   }
@@ -100,6 +167,21 @@ module.exports = async function handler(req, res) {
 
   try {
     const queryIntent = parseQueryIntent(q);
+    const cacheKey = buildExternalCacheKey(q, queryIntent);
+    const cachedResponse = getCachedExternalDiscovery(cacheKey);
+
+    if (cachedResponse) {
+      return res.status(200).json({
+        ...cachedResponse,
+        cache: {
+          hit: true,
+          key: cacheKey,
+          age_seconds: getCacheAgeSeconds(cacheKey),
+          ttl_seconds: Math.round(EXTERNAL_DISCOVERY_CACHE_TTL_MS / 1000)
+        }
+      });
+    }
+
     const enabledSources = SOURCES.filter(source => source.enabled);
 
     let allResults = [];
@@ -143,10 +225,10 @@ module.exports = async function handler(req, res) {
       })
       .slice(0, MAX_RESULTS);
 
-    return res.status(200).json({
+    const payload = {
       ok: true,
       query: q,
-      mode: "external_discovery_v9_feature_extraction",
+      mode: "external_discovery_v10_cached_feature_extraction",
       philosophy: "Local JSON stays primary. NewHome site discovery is trusted secondary. Portals must pass detail-page extraction before rendering.",
       detected_location: queryIntent.location ? queryIntent.location.canonical : null,
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
@@ -154,14 +236,23 @@ module.exports = async function handler(req, res) {
       min_area: queryIntent.minArea,
       checked_sources: diagnostics,
       total: results.length,
-      results
-    });
+      results,
+      cache: {
+        hit: false,
+        key: cacheKey,
+        ttl_seconds: Math.round(EXTERNAL_DISCOVERY_CACHE_TTL_MS / 1000)
+      }
+    };
+
+    setCachedExternalDiscovery(cacheKey, payload);
+
+    return res.status(200).json(payload);
   } catch (error) {
     return res.status(500).json({
       ok: false,
       message: "External discovery failed",
       error: error.message,
-      mode: "external_discovery_v9_feature_extraction",
+      mode: "external_discovery_v10_cached_feature_extraction",
       checked_sources: diagnostics,
       results: []
     });
