@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v16_construction_status_precision";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v17_project_stage_status";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -1378,6 +1378,14 @@ function detectConstructionStatus(text) {
     /(очаква|предстои|следва)\s+акт\s*16/i.test(normalized)
   ) {
     return "pre_act16";
+  }
+
+  if (
+    /степен\s+на\s+завършеност\D{0,30}в\s+проект/i.test(normalized) ||
+    /в\s+проект/i.test(normalized) ||
+    /проектна\s+фаза/i.test(normalized)
+  ) {
+    return "project_stage";
   }
 
   if (
