@@ -962,6 +962,11 @@ function externalExtractRooms(text) {
 
 function externalExtractFloor(text) {
   const value = String(text || "").toLowerCase();
+
+  if (/етаж\D{0,20}партер/i.test(value) || /\bпартер\b/i.test(value)) {
+    return 0;
+  }
+
   const match =
     value.match(/номер\s+на\s+етажа\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
