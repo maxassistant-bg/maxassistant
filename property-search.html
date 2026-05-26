@@ -1111,7 +1111,7 @@ async function searchExternalSources(query, decision = null) {
       return;
     }
 
-    const limitedResults = data.results.slice(0, 5);
+    const limitedResults = data.results.slice(0, 20);
 
     externalBox.innerHTML =
       renderExternalResultsAsUnifiedCards(
