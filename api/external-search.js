@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v13_top20_fallback";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v14_broad_top20_discovery";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -401,7 +401,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
 
-  if (strictResults.length >= MAX_RESULTS_PER_SOURCE || !queryIntent.propertyType) {
+  if (strictResults.length >= MAX_RESULTS_PER_SOURCE) {
     return strictResults.slice(0, MAX_RESULTS_PER_SOURCE);
   }
 
@@ -419,12 +419,59 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     )
   );
 
-  return deduplicateResults([
+  let combinedResults = deduplicateResults([
     ...strictResults,
     ...relaxedDetailPages.filter(Boolean)
   ])
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_RESULTS_PER_SOURCE);
+    .sort((a, b) => b.score - a.score);
+
+  if (combinedResults.length < MAX_RESULTS_PER_SOURCE && queryIntent.location) {
+    const broadIntent = {
+      ...queryIntent,
+      propertyType: null,
+      budget: null,
+      minArea: null
+    };
+
+    const broadSearchUrls = buildPortalSearchUrls(source, originalQuery, broadIntent);
+    const broadListingUrls = [];
+
+    for (const searchUrl of broadSearchUrls.slice(0, MAX_SEARCH_PAGES)) {
+      const html = await fetchText(searchUrl);
+      if (!html) continue;
+
+      diag.fetched_search_pages += 1;
+      broadListingUrls.push(...extractListingUrlsFromSearchPage(source, html, searchUrl));
+    }
+
+    const knownUrls = new Set(uniqueListingUrls);
+    const extraListingUrls = unique(broadListingUrls)
+      .filter(url => !knownUrls.has(url))
+      .filter(url => isAllowedUrl(url, source.domain))
+      .filter(url => !isBlockedUrl(url))
+      .filter(url => isConcreteListingUrl(url, source))
+      .slice(0, MAX_DETAIL_FETCHES_PER_SOURCE);
+
+    diag.extracted_listing_urls += extraListingUrls.length;
+    diag.fetched_detail_pages += extraListingUrls.length;
+
+    const broadDetailPages = await Promise.all(
+      extraListingUrls.map(url =>
+        fetchPortalListingDetail(source, url, relaxedIntent, {
+          fallback: true,
+          minScore: MIN_PORTAL_FALLBACK_SCORE
+        })
+      )
+    );
+
+    combinedResults = deduplicateResults([
+      ...combinedResults,
+      ...broadDetailPages.filter(Boolean)
+    ])
+      .sort((a, b) => b.score - a.score);
+  }
+
+  return combinedResults.slice(0, MAX_RESULTS_PER_SOURCE);
 }
 
 function buildPortalSearchUrls(source, originalQuery, queryIntent) {
