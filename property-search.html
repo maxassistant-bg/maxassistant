@@ -933,6 +933,44 @@ function externalExtractRooms(text) {
   return "";
 }
 
+function externalExtractFloor(text) {
+  const value = String(text || "").toLowerCase();
+  const match = value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*и|ри|ти|ви)?\s*етаж/i);
+
+  if (!match) return "";
+
+  const floor = Number(match[1]);
+  if (!floor || floor > 80) return "";
+
+  return floor;
+}
+
+function formatRoomsLabel(rooms) {
+  if (!rooms) return "Няма данни";
+
+  const count = Number(rooms);
+  if (!count) return rooms;
+  if (count === 1) return "1 стая";
+
+  return `${count} стаи`;
+}
+
+function formatFloorLabel(floor) {
+  if (floor === "" || floor === null || typeof floor === "undefined") return "Няма данни";
+
+  const number = Number(floor);
+  if (!number && number !== 0) return floor;
+  if (number === 0) return "партер";
+
+  const suffixes = {
+    1: "ви",
+    2: "ри",
+    3: "ти"
+  };
+
+  return `${number}-${suffixes[number] || "ти"} етаж`;
+}
+
 function externalInferPropertyType(text, rooms, fallbackType = "") {
   const value = normalizeText(text);
 
@@ -989,6 +1027,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const price = externalExtractPrice(combinedText);
   const area = externalExtractArea(combinedText);
   const rooms = externalExtractRooms(combinedText);
+  const floor = externalExtractFloor(combinedText);
   const propertyType = externalInferPropertyType(combinedText, rooms, result.type);
   const beachLine = externalFormatBeachEvidence(result.beach_evidence);
   const featureLabels = result.feature_labels || "";
@@ -1005,7 +1044,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     price: price || "",
     area: area || "",
     rooms: rooms || "",
-    floor: "",
+    floor: floor || "",
     view: featureLabels || beachLine || "",
     property_type: propertyType,
     complex: title,
@@ -1298,8 +1337,8 @@ function renderPropertyCard(item) {
 
         <div class="property-summary-grid">
           <div><strong>Площ</strong><span>${item.area || "Няма данни"} кв.м</span></div>
-          <div><strong>Стаи</strong><span>${item.rooms || "Няма данни"}</span></div>
-          <div><strong>Етаж</strong><span>${item.floor ?? "Няма данни"}</span></div>
+          <div><strong>Стаи</strong><span>${formatRoomsLabel(item.rooms)}</span></div>
+          <div><strong>Етаж</strong><span>${formatFloorLabel(item.floor)}</span></div>
           <div><strong>Гледка</strong><span>${item.view || "Няма данни"}</span></div>
         </div>
 
@@ -1332,8 +1371,8 @@ function renderPropertyCard(item) {
           <p><strong>Локация:</strong> ${item.location || "Няма данни"}</p>
           <p><strong>Комплекс / сграда:</strong> ${item.complex || "Няма данни"}${item.building ? " / " + item.building : ""}</p>
           <p><strong>Тип:</strong> ${item.property_type || "Няма данни"}</p>
-          <p><strong>Стаи:</strong> ${item.rooms || "Няма данни"}</p>
-          <p><strong>Етаж:</strong> ${item.floor ?? "Няма данни"}</p>
+          <p><strong>Стаи:</strong> ${formatRoomsLabel(item.rooms)}</p>
+          <p><strong>Етаж:</strong> ${formatFloorLabel(item.floor)}</p>
           <p><strong>Бани:</strong> ${item.bathrooms || "Няма данни"}</p>
           <p><strong>Тоалетни:</strong> ${item.toilets || "Няма данни"}</p>
           <p><strong>Балкони:</strong> ${item.balconies ?? "Няма данни"}</p>
