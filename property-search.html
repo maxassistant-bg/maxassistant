@@ -986,6 +986,10 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const featureLabels = result.feature_labels || "";
   const sourceName = result.source || "Външен източник";
   const title = result.title || "Външен резултат";
+  const layoutDetails = Array.isArray(result.layout_details) ? result.layout_details : [];
+  const complexAmenities = Array.isArray(result.complex_amenities) ? result.complex_amenities : [];
+  const externalIntelligence = Array.isArray(result.external_intelligence) ? result.external_intelligence : [];
+  const maintenanceFeeText = result.maintenance_fee_text || "";
 
   return {
     image: result.image || "",
@@ -1005,16 +1009,23 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
       `Открито във външен източник: ${sourceName}`,
       result.match_reason || "Външен discovery резултат",
       beachLine || "",
-      featureLabels || ""
+      featureLabels || "",
+      ...externalIntelligence
     ].filter(Boolean),
-    aiAnswer: result.excerpt ? [result.excerpt] : [],
+    aiAnswer: [
+      result.excerpt || "",
+      layoutDetails.length ? "Разпределение: " + layoutDetails.join(", ") : "",
+      complexAmenities.length ? "Удобства в комплекса: " + complexAmenities.join(", ") : ""
+    ].filter(Boolean),
+    layout_details: layoutDetails,
+    complex_amenities: complexAmenities,
     complexInfo: null,
     furnishing_status: "",
     price_per_m2: price && area ? Math.round(price / area) : "",
     construction_stage: "",
     completion_status: "",
     beach_line: beachLine,
-    maintenance_fee: "",
+    maintenance_fee: maintenanceFeeText,
     bathrooms: "",
     toilets: "",
     balconies: "",
@@ -1330,6 +1341,24 @@ function renderPropertyCard(item) {
           <p><strong>Източник:</strong> ${item.source || "Няма данни"}</p>
           <p><strong>AI съвпадение:</strong> ${item.score} точки</p>
         </div>
+
+        ${item.layout_details && item.layout_details.length ? `
+          <div class="ai-answer">
+            <strong>Разпределение според външната обява:</strong>
+            <ul>
+              ${item.layout_details.map(detail => `<li>${detail}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
+
+        ${item.complex_amenities && item.complex_amenities.length ? `
+          <div class="ai-answer">
+            <strong>Удобства, разпознати в комплекса:</strong>
+            <ul>
+              ${item.complex_amenities.map(amenity => `<li>${amenity}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
 
         ${item.complexInfo && item.complexInfo.infrastructure ? `
           <div class="ai-answer">
