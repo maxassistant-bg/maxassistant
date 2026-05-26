@@ -1124,6 +1124,9 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const externalIntelligence = Array.isArray(result.external_intelligence) ? result.external_intelligence : [];
   const maintenanceFeeText = result.maintenance_fee_text || "";
   const constructionStatus = externalFormatConstructionStatus(result.construction_status || "");
+  const layoutText = normalizeText(layoutDetails.join(" "));
+  const finalBathrooms = bathrooms || (layoutText.includes("баня") ? 1 : "");
+  const finalToilets = toilets || (layoutText.includes("тоалетна") ? 1 : "");
 
   return {
     image: result.image || "",
@@ -1160,8 +1163,8 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     completion_status: constructionStatus,
     beach_line: beachLine,
     maintenance_fee: maintenanceFeeText,
-    bathrooms: bathrooms || "",
-    toilets: toilets || "",
+    bathrooms: finalBathrooms || "",
+    toilets: finalToilets || "",
     balconies: "",
     storage_room: false,
     walk_in_closet: false,
