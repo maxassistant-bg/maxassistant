@@ -997,6 +997,32 @@ function externalExtractFloor(text) {
   return wordMatch ? wordFloors[wordMatch[1]] || "" : "";
 }
 
+function wordNumberToNumber(value) {
+  const normalized = normalizeText(value);
+  const words = {
+    "една": 1,
+    "един": 1,
+    "едно": 1,
+    "две": 2,
+    "два": 2,
+    "три": 3,
+    "четири": 4,
+    "пет": 5
+  };
+
+  return words[normalized] || Number(normalized) || "";
+}
+
+function externalExtractCount(text, nouns) {
+  const value = String(text || "").toLowerCase();
+  const nounPattern = nouns.join("|");
+  const match =
+    value.match(new RegExp(`(?:^|\\s)([0-9]{1,2})\\s*(?:${nounPattern})`, "i")) ||
+    value.match(new RegExp(`(?:^|\\s)(една|един|едно|две|два|три|четири|пет)\\s*(?:${nounPattern})`, "i"));
+
+  return match ? wordNumberToNumber(match[1]) : "";
+}
+
 function formatRoomsLabel(rooms) {
   if (!rooms) return "Няма данни";
 
@@ -1081,6 +1107,8 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const area = externalExtractArea(combinedText);
   const rooms = externalExtractRooms(combinedText);
   const floor = externalExtractFloor(combinedText);
+  const bathrooms = externalExtractCount(combinedText, ["бани", "баня", "bathrooms?", "bath"]);
+  const toilets = externalExtractCount(combinedText, ["тоалетни", "тоалетна", "wc", "toilets?"]);
   const propertyType = externalInferPropertyType(combinedText, rooms, result.type);
   const beachLine = externalFormatBeachEvidence(result.beach_evidence);
   const featureLabels = result.feature_labels || "";
@@ -1127,8 +1155,8 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     completion_status: constructionStatus,
     beach_line: beachLine,
     maintenance_fee: maintenanceFeeText,
-    bathrooms: "",
-    toilets: "",
+    bathrooms: bathrooms || "",
+    toilets: toilets || "",
     balconies: "",
     storage_room: false,
     walk_in_closet: false,
