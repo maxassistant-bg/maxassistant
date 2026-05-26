@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v15_external_property_intelligence";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v16_construction_status_precision";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -359,6 +359,7 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     layout_details: detail.layout_details || [],
     complex_amenities: detail.complex_amenities || [],
     maintenance_fee_text: detail.maintenance_fee_text || "",
+    construction_status: detail.construction_status || "",
     external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
     score: Math.round(scored.score * 10) / 10
@@ -589,6 +590,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     layout_details: detail.layout_details || [],
     complex_amenities: detail.complex_amenities || [],
     maintenance_fee_text: detail.maintenance_fee_text || "",
+    construction_status: detail.construction_status || "",
     external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
     score: Math.round(scored.score * 10) / 10
@@ -614,6 +616,12 @@ function extractDetailFromHtml(html, url) {
     clean,
     tableText
   ].join(" "));
+  const construction_status = detectConstructionStatus([
+    title,
+    description,
+    clean,
+    tableText
+  ].join(" "));
 
   const excerpt = makeDetailExcerpt({
     title,
@@ -633,6 +641,7 @@ function extractDetailFromHtml(html, url) {
     excerpt,
     price,
     area,
+    construction_status,
     ...intelligence,
     hasTable: Boolean(tableText)
   };
@@ -1252,6 +1261,7 @@ function extractLocs(xml) {
 function extractListingFeatures(text) {
   const normalized = normalize(text);
   const features = [];
+  const constructionStatus = detectConstructionStatus(normalized);
 
   const rules = [
     {
@@ -1344,6 +1354,10 @@ function extractListingFeatures(text) {
   ];
 
   for (const rule of rules) {
+    if (rule.key === "act16" && constructionStatus !== "act16") {
+      continue;
+    }
+
     if (rule.patterns.some(pattern => pattern.test(normalized))) {
       features.push({
         key: rule.key,
@@ -1353,6 +1367,38 @@ function extractListingFeatures(text) {
   }
 
   return deduplicateFeatures(features);
+}
+
+function detectConstructionStatus(text) {
+  const normalized = normalize(text);
+
+  if (
+    /пред\s+акт\s*16/i.test(normalized) ||
+    /акт\s*16\s*(до|очаква|се\s+очаква|предстои)/i.test(normalized) ||
+    /(очаква|предстои|следва)\s+акт\s*16/i.test(normalized)
+  ) {
+    return "pre_act16";
+  }
+
+  if (
+    /в\s+строеж/i.test(normalized) ||
+    /в\s+строителство/i.test(normalized) ||
+    /строящ/i.test(normalized) ||
+    /на\s+зелено/i.test(normalized) ||
+    /разрешение\s+за\s+строеж/i.test(normalized)
+  ) {
+    return "under_construction";
+  }
+
+  if (
+    /акт\s*16/i.test(normalized) ||
+    /act\s*16/i.test(normalized) ||
+    /разрешение\s+за\s+ползване/i.test(normalized)
+  ) {
+    return "act16";
+  }
+
+  return "";
 }
 
 function deduplicateFeatures(features) {
