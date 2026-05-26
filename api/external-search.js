@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v17_project_stage_status";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v18_api_floor_extraction";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -346,6 +346,7 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     url,
     image: detail.image,
     excerpt: detail.excerpt,
+    floor: detail.floor || "",
     source: source.name,
     source_domain: source.domain,
     source_type: source.type,
@@ -577,6 +578,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     url,
     image: detail.image,
     excerpt: detail.excerpt,
+    floor: detail.floor || "",
     source: source.name,
     source_domain: source.domain,
     source_type: source.type,
@@ -610,6 +612,7 @@ function extractDetailFromHtml(html, url) {
 
   const price = extractPrice([title, description, clean, tableText].join(" "));
   const area = extractArea([title, description, clean, tableText].join(" "));
+  const floor = extractFloor([title, description, clean, tableText].join(" "));
   const intelligence = extractExternalPropertyIntelligence([
     title,
     description,
@@ -641,6 +644,7 @@ function extractDetailFromHtml(html, url) {
     excerpt,
     price,
     area,
+    floor,
     construction_status,
     ...intelligence,
     hasTable: Boolean(tableText)
@@ -854,6 +858,42 @@ function extractArea(text) {
   const value = Number(String(match[1]).replace(",", "."));
 
   return value > 10 && value < 1000 ? value : null;
+}
+
+function extractFloor(text) {
+  const value = normalize(text);
+
+  if (/етаж\D{0,20}партер/i.test(value) || /\bпартер\b/i.test(value)) {
+    return 0;
+  }
+
+  const match =
+    value.match(/номер\s+на\s+етажа\D{0,30}([0-9]{1,2})\s*етаж/i) ||
+    value.match(/етаж\D{0,20}([0-9]{1,2})\s*етаж/i) ||
+    value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
+    value.match(/(?:разположен|намира)\D{0,50}([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i);
+
+  if (match) {
+    const floor = Number(match[1]);
+    return floor > 0 && floor <= 80 ? floor : "";
+  }
+
+  const wordFloors = {
+    "първи": 1,
+    "втори": 2,
+    "трети": 3,
+    "четвърти": 4,
+    "пети": 5,
+    "шести": 6,
+    "седми": 7,
+    "осми": 8,
+    "девети": 9,
+    "десети": 10
+  };
+
+  const wordMatch = value.match(/(първи|втори|трети|четвърти|пети|шести|седми|осми|девети|десети)\s+етаж/i);
+
+  return wordMatch ? wordFloors[wordMatch[1]] || "" : "";
 }
 
 function hasGeneralApartmentSignal(text) {
