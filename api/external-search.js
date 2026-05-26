@@ -81,11 +81,14 @@ const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RESULTS = 20;
 const MAX_SEARCH_PAGES = 4;
 const MAX_DETAIL_FETCHES_PER_SOURCE = 20;
+const MAX_RESULTS_PER_SOURCE = 20;
 const MIN_NEWHOME_SCORE = 42;
 const MIN_PORTAL_SCORE = 58;
+const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v13_top20_fallback";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -96,6 +99,7 @@ globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ = externalDiscoveryCache;
 
 function buildExternalCacheKey(query, queryIntent) {
   const parts = [
+    EXTERNAL_DISCOVERY_CACHE_VERSION,
     normalize(query),
     queryIntent.location ? queryIntent.location.canonical : "",
     queryIntent.propertyType ? queryIntent.propertyType.canonical : "",
@@ -391,11 +395,36 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
 
   diag.fetched_detail_pages = uniqueListingUrls.length;
 
-  return detailPages
+  const strictResults = detailPages
     .filter(Boolean)
     .filter(item => item.score >= MIN_PORTAL_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
+
+  if (strictResults.length >= MAX_RESULTS_PER_SOURCE || !queryIntent.propertyType) {
+    return strictResults.slice(0, MAX_RESULTS_PER_SOURCE);
+  }
+
+  const relaxedIntent = {
+    ...queryIntent,
+    propertyType: null
+  };
+
+  const relaxedDetailPages = await Promise.all(
+    uniqueListingUrls.map(url =>
+      fetchPortalListingDetail(source, url, relaxedIntent, {
+        fallback: true,
+        minScore: MIN_PORTAL_FALLBACK_SCORE
+      })
+    )
+  );
+
+  return deduplicateResults([
+    ...strictResults,
+    ...relaxedDetailPages.filter(Boolean)
+  ])
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_RESULTS_PER_SOURCE);
 }
 
 function buildPortalSearchUrls(source, originalQuery, queryIntent) {
@@ -469,7 +498,7 @@ function extractListingUrlsFromSearchPage(source, html, pageUrl) {
     .map(a => a.url);
 }
 
-async function fetchPortalListingDetail(source, url, queryIntent) {
+async function fetchPortalListingDetail(source, url, queryIntent, options = {}) {
   const html = await fetchText(url);
   if (!html) return null;
 
@@ -481,7 +510,15 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
 
   const scored = scoreDetailResult(detail, queryIntent, source, source.priority / 20, "portal");
 
-  if (scored.score < MIN_PORTAL_SCORE) return null;
+  const minScore = options.minScore ?? MIN_PORTAL_SCORE;
+
+  if (scored.score < minScore) return null;
+
+  const reasons = scored.reasons.slice(0, 6);
+
+  if (options.fallback) {
+    reasons.unshift("допълващ резултат: не е най-точното съвпадение, но е релевантна външна възможност в търсената локация");
+  }
 
   return {
     title: detail.title,
@@ -495,7 +532,7 @@ async function fetchPortalListingDetail(source, url, queryIntent) {
     type: "external_portal_listing_detail",
     real_property_match: true,
     has_table: detail.hasTable,
-    match_reason: scored.reasons.slice(0, 6).join("; "),
+    match_reason: reasons.join("; "),
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
     beach_evidence: scored.beach_evidence || null,
