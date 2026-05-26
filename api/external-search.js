@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v14_broad_top20_discovery";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v15_external_property_intelligence";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -356,6 +356,10 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     match_reason: scored.reasons.slice(0, 6).join("; "),
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
+    layout_details: detail.layout_details || [],
+    complex_amenities: detail.complex_amenities || [],
+    maintenance_fee_text: detail.maintenance_fee_text || "",
+    external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
     score: Math.round(scored.score * 10) / 10
   };
@@ -582,6 +586,10 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     match_reason: reasons.join("; "),
     features: scored.features || [],
     feature_labels: formatFeatureLabels(scored.features || []),
+    layout_details: detail.layout_details || [],
+    complex_amenities: detail.complex_amenities || [],
+    maintenance_fee_text: detail.maintenance_fee_text || "",
+    external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
     score: Math.round(scored.score * 10) / 10
   };
@@ -600,6 +608,12 @@ function extractDetailFromHtml(html, url) {
 
   const price = extractPrice([title, description, clean, tableText].join(" "));
   const area = extractArea([title, description, clean, tableText].join(" "));
+  const intelligence = extractExternalPropertyIntelligence([
+    title,
+    description,
+    clean,
+    tableText
+  ].join(" "));
 
   const excerpt = makeDetailExcerpt({
     title,
@@ -619,6 +633,7 @@ function extractDetailFromHtml(html, url) {
     excerpt,
     price,
     area,
+    ...intelligence,
     hasTable: Boolean(tableText)
   };
 }
@@ -1082,6 +1097,63 @@ function makeDetailExcerpt(detail) {
   if (!parts.length) parts.push(detail.clean);
 
   return cleanText(parts.join(" | ")).slice(0, 420);
+}
+
+function extractExternalPropertyIntelligence(text) {
+  const normalized = normalize(text);
+  const layout = [];
+  const amenities = [];
+  const intelligence = [];
+
+  const add = (list, label) => {
+    if (label && !list.includes(label)) list.push(label);
+  };
+
+  if (/дневна|хол|living room/.test(normalized)) add(layout, "дневна");
+  if (/кухненски бокс|кухня|kitchen/.test(normalized)) add(layout, "кухненски бокс");
+  if (/трапезария|dining/.test(normalized)) add(layout, "трапезария");
+  if (/спалня|bedroom/.test(normalized)) add(layout, "спалня");
+  if (/баня с тоалетна|санитарен възел/.test(normalized)) add(layout, "баня с тоалетна");
+  else if (/баня|bathroom/.test(normalized)) add(layout, "баня");
+  if (/тераса|балкон|terrace|balcony/.test(normalized)) add(layout, "тераса");
+  if (/гледка към морето|гледка море|морска гледка|sea view/.test(normalized)) {
+    add(layout, "тераса/зона с гледка към морето");
+    add(intelligence, "описана е гледка към морето");
+  }
+
+  if (/рецепция/.test(normalized)) add(amenities, "рецепция");
+  if (/басейн/.test(normalized)) add(amenities, "басейн");
+  if (/ресторант/.test(normalized)) add(amenities, "ресторант");
+  if (/детска площадка/.test(normalized)) add(amenities, "детска площадка");
+  if (/видеонаблюдение|охрана|24\/7|24 часа/.test(normalized)) add(amenities, "видеонаблюдение / охрана");
+  if (/паркинг/.test(normalized)) add(amenities, "паркинг");
+
+  const maintenanceMatch =
+    String(text || "").match(/(?:годишна\s*)?такса\s+поддръжка[:\s-]*([^.\n\r]{1,80})/i) ||
+    String(text || "").match(/([0-9]+(?:[.,][0-9]+)?)\s*евро\s*\/?\s*кв\.?\s*м/i);
+
+  const maintenance_fee_text = maintenanceMatch
+    ? cleanText(maintenanceMatch[0]).slice(0, 90)
+    : "";
+
+  if (maintenance_fee_text) {
+    add(intelligence, maintenance_fee_text);
+  }
+
+  if (layout.length) {
+    add(intelligence, "извлечено е функционално разпределение от текста на обявата");
+  }
+
+  if (amenities.length) {
+    add(intelligence, "извлечени са удобства на комплекса от текста на обявата");
+  }
+
+  return {
+    layout_details: layout,
+    complex_amenities: amenities,
+    maintenance_fee_text,
+    external_intelligence: intelligence
+  };
 }
 
 function extractTitle(html) {
