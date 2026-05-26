@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="bg">
 <head>
@@ -268,18 +269,11 @@
 
         <select id="propertyType">
           <option value="">Тип имот</option>
-          <option value="студио">Студио</option>
-          <option value="една спалня">Една спалня</option>
-          <option value="две спални">Две спални</option>
+          <option value="студио">Студио / 1-стая</option>
+          <option value="една спалня">Двустаен / Една спалня</option>
+          <option value="две спални">Тристаен / Две спални</option>
+          <option value="три спални">Многостаен / 4+ стаи</option>
           <option value="къща">Къща / вила</option>
-        </select>
-
-        <select id="rooms">
-          <option value="">Брой стаи</option>
-          <option value="1">1 стая</option>
-          <option value="2">2 стаи</option>
-          <option value="3">3 стаи</option>
-          <option value="4">4+ стаи</option>
         </select>
 
         <input type="number" id="budget" placeholder="Бюджет до €">
@@ -377,6 +371,26 @@ Promise.all([
 /* Помощни функции */
 function normalizeText(text) {
   return (text || "").toString().toLowerCase().trim();
+}
+
+function getRoomsFromPropertyType(propertyType) {
+  const roomsByType = {
+    "студио": 1,
+    "една спалня": 2,
+    "две спални": 3,
+    "три спални": 4
+  };
+
+  return roomsByType[propertyType] || 0;
+}
+
+function propertyMatchesRooms(propertyRooms, selectedRooms) {
+  if (!selectedRooms) return true;
+
+  const rooms = Number(propertyRooms);
+  if (selectedRooms >= 4) return rooms >= 4;
+
+  return rooms === selectedRooms;
 }
 
 function includesAny(text, words) {
@@ -479,7 +493,7 @@ function collectPropertyCandidates({
 
     if (rooms) {
 
-      if (Number(property.rooms) !== rooms) {
+      if (!propertyMatchesRooms(property.rooms, rooms)) {
         return null;
       }
 
@@ -676,7 +690,7 @@ function collectPropertyCandidates({
 document.getElementById("searchButton").addEventListener("click", function () {
   const location = normalizeText(document.getElementById("location").value);
   const propertyType = normalizeText(document.getElementById("propertyType").value);
-  const rooms = Number(document.getElementById("rooms").value || 0);
+  const rooms = getRoomsFromPropertyType(propertyType);
   const budget = Number(document.getElementById("budget").value || 0);
   const minArea = Number(document.getElementById("minArea").value || 0);
   const constructionStage = normalizeText(document.getElementById("constructionStage").value);
