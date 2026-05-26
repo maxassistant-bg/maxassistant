@@ -1015,14 +1015,17 @@ function wordNumberToNumber(value) {
 
 function externalExtractCount(text, nouns) {
   const value = String(text || "").toLowerCase();
-  const nounPattern = nouns.join("|");
-  const match =
-    value.match(new RegExp(`(?:^|\\s)([0-9]{1,2})\\s*(?:${nounPattern})`, "i")) ||
-    value.match(new RegExp(`(?:^|\\s)(една|един|едно|две|два|три|четири|пет)\\s*(?:${nounPattern})`, "i"));
+  const countWords = "(една|един|едно|две|два|три|четири|пет)";
 
-  if (match) return wordNumberToNumber(match[1]);
+  for (const noun of nouns) {
+    const numberMatch = value.match(new RegExp(`(?:^|\\s)([0-9]{1,2})\\s*${noun}`, "i"));
+    if (numberMatch) return wordNumberToNumber(numberMatch[1]);
 
-  return new RegExp(`(?:${nounPattern})`, "i").test(value) ? 1 : "";
+    const wordMatch = value.match(new RegExp(`(?:^|\\s)${countWords}\\s*${noun}`, "i"));
+    if (wordMatch) return wordNumberToNumber(wordMatch[1]);
+  }
+
+  return nouns.some(noun => new RegExp(noun, "i").test(value)) ? 1 : "";
 }
 
 function formatRoomsLabel(rooms) {
