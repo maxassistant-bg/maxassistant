@@ -518,7 +518,34 @@ function collectPropertyCandidates({
       reasons.push("отговаря на минималната площ");
     }
 
-    if (constructionStage && normalizeText(property.construction_stage).includes(constructionStage)) {
+    if (constructionStage) {
+      const hasAct16 =
+        property.act16 === true ||
+        normalizeText(property.construction_stage).includes("разрешение за ползване") ||
+        normalizeText(property.completion_status).includes("акт 16");
+
+      const isUnderConstruction =
+        property.under_construction === true ||
+        property.act16 === false ||
+        normalizeText(property.construction_stage).includes("строителство") ||
+        normalizeText(property.construction_stage).includes("строеж");
+
+      if (constructionStage.includes("разрешение") && !hasAct16) {
+        return null;
+      }
+
+      if (constructionStage.includes("строителство") && !isUnderConstruction) {
+        return null;
+      }
+
+      if (
+        constructionStage.includes("завършено") &&
+        !normalizeText(property.construction_stage).includes("завършено") &&
+        !hasAct16
+      ) {
+        return null;
+      }
+
       score += 15;
       reasons.push("съвпада с етапа на строителство");
     }
@@ -936,6 +963,7 @@ function externalExtractRooms(text) {
 function externalExtractFloor(text) {
   const value = String(text || "").toLowerCase();
   const match =
+    value.match(/номер\s+на\s+етажа\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
     value.match(/(?:разположен|намира)\D{0,40}([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i);
 
