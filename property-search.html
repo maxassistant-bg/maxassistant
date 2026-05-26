@@ -1020,7 +1020,9 @@ function externalExtractCount(text, nouns) {
     value.match(new RegExp(`(?:^|\\s)([0-9]{1,2})\\s*(?:${nounPattern})`, "i")) ||
     value.match(new RegExp(`(?:^|\\s)(една|един|едно|две|два|три|четири|пет)\\s*(?:${nounPattern})`, "i"));
 
-  return match ? wordNumberToNumber(match[1]) : "";
+  if (match) return wordNumberToNumber(match[1]);
+
+  return new RegExp(`(?:${nounPattern})`, "i").test(value) ? 1 : "";
 }
 
 function formatRoomsLabel(rooms) {
