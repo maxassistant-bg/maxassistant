@@ -935,14 +935,33 @@ function externalExtractRooms(text) {
 
 function externalExtractFloor(text) {
   const value = String(text || "").toLowerCase();
-  const match = value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*и|ри|ти|ви)?\s*етаж/i);
+  const match =
+    value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
+    value.match(/(?:разположен|намира)\D{0,40}([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i);
 
-  if (!match) return "";
+  if (match) {
+    const floor = Number(match[1]);
+    if (!floor || floor > 80) return "";
 
-  const floor = Number(match[1]);
-  if (!floor || floor > 80) return "";
+    return floor;
+  }
 
-  return floor;
+  const wordFloors = {
+    "първи": 1,
+    "втори": 2,
+    "трети": 3,
+    "четвърти": 4,
+    "пети": 5,
+    "шести": 6,
+    "седми": 7,
+    "осми": 8,
+    "девети": 9,
+    "десети": 10
+  };
+
+  const wordMatch = value.match(/(първи|втори|трети|четвърти|пети|шести|седми|осми|девети|десети)\s+етаж/i);
+
+  return wordMatch ? wordFloors[wordMatch[1]] || "" : "";
 }
 
 function formatRoomsLabel(rooms) {
