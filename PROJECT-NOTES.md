@@ -141,3 +141,95 @@ return null
 - investor sync
 - Excel import system
 - AI extraction
+
+- # MaxAssistant Project Notes
+
+## Project Identity
+
+MaxAssistant is an AI Property Intelligence System for real estate on the Bulgarian Black Sea coast.
+
+It is not a standard property website, filter system, or demo chatbot. Its purpose is to understand property searches, reason over trusted knowledge, discover external opportunities, normalize property data, score relevance, and behave like a real AI real estate consultant.
+
+## Core Architecture
+
+### 1. Trusted Local Knowledge Layer
+
+The trusted source is NewHome Bulgaria / local database.
+
+This layer is the truth layer.
+
+It is used for:
+
+- trusted facts
+- AI reasoning
+- scoring
+- complex knowledge
+- beach intelligence
+- construction and Act 16 status
+- infrastructure
+- local property intelligence
+
+Local database information has the highest priority.
+
+### 2. External Discovery Layer
+
+External sources include:
+
+- Alo.bg
+- Imot.bg
+- Realistimo
+- trusted investor sites
+
+These sources are not the final truth. They are used for:
+
+- market discovery
+- additional opportunities
+- fallback results
+- comparison
+- extracting candidate listings
+
+External information must be normalized and treated carefully.
+
+## Key Principle
+
+NewHome/local database is the source of truth.
+
+External sites are discovery sources.
+
+If there is conflict between trusted local knowledge and external text, local trusted knowledge wins.
+
+## Structured Property Intelligence Objects
+
+The normalized format for every property is called:
+
+**structured property intelligence object**
+
+Every local or external listing should be converted into this type of object before visualization, scoring, deduplication, or AI reasoning.
+
+Target structure:
+
+```js
+{
+  title,
+  price,
+  area,
+  rooms,
+  floor,
+  bathrooms,
+  toilets,
+  location,
+  complex,
+  property_type,
+  construction_status,
+  act16_status,
+  beach_distance,
+  beach_category,
+  layout_details,
+  complex_amenities,
+  maintenance_fee,
+  image,
+  url,
+  source,
+  reasons,
+  aiScore
+}
