@@ -78,9 +78,9 @@ const PROPERTY_TYPE_RULES = [
 ];
 
 const REQUEST_TIMEOUT_MS = 10000;
-const MAX_RESULTS = 10;
-const MAX_SEARCH_PAGES = 3;
-const MAX_DETAIL_FETCHES_PER_SOURCE = 10;
+const MAX_RESULTS = 20;
+const MAX_SEARCH_PAGES = 4;
+const MAX_DETAIL_FETCHES_PER_SOURCE = 20;
 const MIN_NEWHOME_SCORE = 42;
 const MIN_PORTAL_SCORE = 58;
 
@@ -285,7 +285,7 @@ async function searchNewHomeTrustedSite(source, originalQuery, queryIntent, diag
     .filter(Boolean)
     .filter(item => item.score >= MIN_NEWHOME_SCORE)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 4);
+    .slice(0, 8);
 }
 
 async function discoverNewHomeUrls(source) {
@@ -395,7 +395,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     .filter(Boolean)
     .filter(item => item.score >= MIN_PORTAL_SCORE)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 4);
+    .slice(0, 8);
 }
 
 function buildPortalSearchUrls(source, originalQuery, queryIntent) {
