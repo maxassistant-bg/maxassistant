@@ -969,6 +969,14 @@ function externalFormatBeachEvidence(evidence) {
   return "";
 }
 
+function externalFormatConstructionStatus(status) {
+  if (status === "act16") return "Акт 16 / разрешение за ползване";
+  if (status === "pre_act16") return "Пред Акт 16";
+  if (status === "under_construction") return "В строителство / строеж";
+
+  return "";
+}
+
 function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
 
   const combinedText = [
@@ -990,6 +998,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const complexAmenities = Array.isArray(result.complex_amenities) ? result.complex_amenities : [];
   const externalIntelligence = Array.isArray(result.external_intelligence) ? result.external_intelligence : [];
   const maintenanceFeeText = result.maintenance_fee_text || "";
+  const constructionStatus = externalFormatConstructionStatus(result.construction_status || "");
 
   return {
     image: result.image || "",
@@ -1022,8 +1031,8 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     complexInfo: null,
     furnishing_status: "",
     price_per_m2: price && area ? Math.round(price / area) : "",
-    construction_stage: "",
-    completion_status: "",
+    construction_stage: result.construction_status === "under_construction" ? constructionStatus : "",
+    completion_status: constructionStatus,
     beach_line: beachLine,
     maintenance_fee: maintenanceFeeText,
     bathrooms: "",
