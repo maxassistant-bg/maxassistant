@@ -851,6 +851,7 @@ function escapeHtml(value) {
 
 function buildExternalDebugHtml(data, query) {
   if (!data) return "";
+  if (!new URLSearchParams(window.location.search).has("debugExternal")) return "";
 
   const debugPayload = {
     query,
@@ -927,6 +928,43 @@ function externalExtractRooms(text) {
   if (/студио|едностаен|studio/.test(value)) return "1";
   if (/двустаен|една спалня|1 спалня|one bedroom/.test(value)) return "2";
   if (/тристаен|две спални|2 спални|two bedroom/.test(value)) return "3";
+  if (/многостаен|три спални|3 спални|четиристаен|4\+?\s*стаи|4\+?\s*rooms?/i.test(value)) return "4";
+
+  return "";
+}
+
+function externalInferPropertyType(text, rooms, fallbackType = "") {
+  const value = normalizeText(text);
+
+  if (/къща|вила|house|villa/.test(value)) return "Къща / вила";
+  if (rooms === "1") return "Студио";
+  if (rooms === "2") return "Двустаен / Една спалня";
+  if (rooms === "3") return "Тристаен / Две спални";
+  if (rooms === "4") return "Многостаен / 4+ стаи";
+
+  if (fallbackType && !/external|trusted|result|detail/i.test(fallbackType)) {
+    return fallbackType;
+  }
+
+  return "Външна обява";
+}
+
+function externalFormatBeachEvidence(evidence) {
+  if (!evidence) return "";
+
+  if (evidence.precision === "true_beachfront") return "Първа линия / директно до плажа";
+  if (evidence.precision === "very_near_beach") {
+    return evidence.distanceMeters
+      ? `Много близо до плажа - около ${evidence.distanceMeters} м`
+      : "Много близо до плажа";
+  }
+  if (evidence.precision === "near_beach") {
+    return evidence.distanceMeters
+      ? `Близо до плажа - около ${evidence.distanceMeters} м`
+      : "Близо до плажа";
+  }
+  if (evidence.precision === "far_from_beach") return "По-далеч от плажа";
+  if (evidence.seaView) return "Морска гледка";
 
   return "";
 }
@@ -943,6 +981,11 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const price = externalExtractPrice(combinedText);
   const area = externalExtractArea(combinedText);
   const rooms = externalExtractRooms(combinedText);
+  const propertyType = externalInferPropertyType(combinedText, rooms, result.type);
+  const beachLine = externalFormatBeachEvidence(result.beach_evidence);
+  const featureLabels = result.feature_labels || "";
+  const sourceName = result.source || "Външен източник";
+  const title = result.title || "Външен резултат";
 
   return {
     image: result.image || "",
@@ -950,17 +993,19 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     area: area || "",
     rooms: rooms || "",
     floor: "",
-    view: result.feature_labels || "",
-    property_type: result.type || "Външна обява",
-    complex: result.title || "Външен резултат",
+    view: featureLabels || beachLine || "",
+    property_type: propertyType,
+    complex: title,
     location: fallbackLocation || "Външен източник",
-    building: result.source || "",
+    building: sourceName,
     url: result.url || "",
-    source: result.source || "Външен източник",
+    source: sourceName,
     score: result.score || 0,
     reasons: [
+      `Открито във външен източник: ${sourceName}`,
       result.match_reason || "Външен discovery резултат",
-      result.beach_precision_label || ""
+      beachLine || "",
+      featureLabels || ""
     ].filter(Boolean),
     aiAnswer: result.excerpt ? [result.excerpt] : [],
     complexInfo: null,
@@ -968,7 +1013,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     price_per_m2: price && area ? Math.round(price / area) : "",
     construction_stage: "",
     completion_status: "",
-    beach_line: result.beach_precision_label || "",
+    beach_line: beachLine,
     maintenance_fee: "",
     bathrooms: "",
     toilets: "",
@@ -976,7 +1021,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     storage_room: false,
     walk_in_closet: false,
     basement: false,
-    _matchLabel: "External opportunity"
+    _matchLabel: "Външна възможност"
   };
 }
 
