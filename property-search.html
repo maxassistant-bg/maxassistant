@@ -1057,6 +1057,7 @@ function externalFormatBeachEvidence(evidence) {
 function externalFormatConstructionStatus(status) {
   if (status === "act16") return "Акт 16 / разрешение за ползване";
   if (status === "pre_act16") return "Пред Акт 16";
+  if (status === "project_stage") return "В проект / без Акт 16";
   if (status === "under_construction") return "В строителство / строеж";
 
   return "";
@@ -1117,7 +1118,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     complexInfo: null,
     furnishing_status: "",
     price_per_m2: price && area ? Math.round(price / area) : "",
-    construction_stage: result.construction_status === "under_construction" ? constructionStatus : "",
+    construction_stage: ["under_construction", "project_stage"].includes(result.construction_status) ? constructionStatus : "",
     completion_status: constructionStatus,
     beach_line: beachLine,
     maintenance_fee: maintenanceFeeText,
