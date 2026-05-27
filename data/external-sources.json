@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v28_price_area_passthrough";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v29_realistimo_card_fields";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -348,6 +348,7 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     excerpt: detail.excerpt,
     price: detail.price || null,
     area: detail.area || null,
+    rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
     floor: detail.floor || "",
     source: source.name,
     source_domain: source.domain,
@@ -621,6 +622,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     excerpt: detail.excerpt,
     price: detail.price || null,
     area: detail.area || null,
+    rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
     floor: detail.floor || "",
     source: source.name,
     source_domain: source.domain,
@@ -843,12 +845,31 @@ function parseQueryIntent(query) {
 }
 
 function extractRooms(text) {
-  const match =
-    String(text || "").match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i) ||
-    String(text || "").match(/\b([1-4])\s*-\s*стаен\b/i) ||
-    String(text || "").match(/\b([1-4])\s+стаен\b/i);
+  const value = String(text || "");
 
-  return match ? Number(match[1]) : null;
+  if (/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu.test(value)) {
+    const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu);
+    return Number(bedroomMatch[2]) + 1;
+  }
+
+  if (/(една|две|три)\s+спалн/i.test(value)) {
+    const wordBedroomMatch = value.match(/(една|две|три)\s+спалн/i);
+    const bedroomCount = { "една": 1, "две": 2, "три": 3 }[wordBedroomMatch[1].toLowerCase()];
+    if (bedroomCount) return bedroomCount + 1;
+  }
+
+  if (/\b([1-4])\s*(bedrooms?)\b/i.test(value)) {
+    const bedroomMatch = value.match(/\b([1-4])\s*(bedrooms?)\b/i);
+    return Number(bedroomMatch[1]) + 1;
+  }
+
+  const match =
+    value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^\p{L}])/iu) ||
+    value.match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i) ||
+    value.match(/\b([1-4])\s*-\s*стаен\b/i) ||
+    value.match(/\b([1-4])\s+стаен\b/i);
+
+  return match ? Number(match[2] || match[1]) : null;
 }
 
 function extractBudget(text) {
@@ -917,6 +938,8 @@ function extractFloor(text) {
   }
 
   const match =
+    value.match(/ет\.?\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
+    value.match(/етаж\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
     value.match(/номер\s+на\s+етажа\D{0,30}([0-9]{1,2})\s*етаж/i) ||
     value.match(/етаж\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
