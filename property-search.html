@@ -952,7 +952,19 @@ function externalExtractArea(text) {
 function externalExtractRooms(text) {
   const value = String(text || "").toLowerCase();
 
+  const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu);
+  if (bedroomMatch) return String(Number(bedroomMatch[2]) + 1);
+
+  const wordBedroomMatch = value.match(/(една|две|три)\s+спалн/i);
+  if (wordBedroomMatch) {
+    const bedroomCount = { "една": 1, "две": 2, "три": 3 }[wordBedroomMatch[1].toLowerCase()];
+    if (bedroomCount) return String(bedroomCount + 1);
+  }
+
   if (/студио|едностаен|studio/.test(value)) return "1";
+  const roomMatch = value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^\p{L}])/iu);
+  if (roomMatch) return roomMatch[2];
+  if (/\b1\s*(стая|room)\b/i.test(value)) return "1";
   if (/двустаен|една спалня|1 спалня|one bedroom/.test(value)) return "2";
   if (/тристаен|две спални|2 спални|two bedroom/.test(value)) return "3";
   if (/многостаен|три спални|3 спални|четиристаен|4\+?\s*стаи|4\+?\s*rooms?/i.test(value)) return "4";
@@ -968,6 +980,8 @@ function externalExtractFloor(text) {
   }
 
   const match =
+    value.match(/ет\.?\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
+    value.match(/етаж\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
     value.match(/номер\s+на\s+етажа\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
     value.match(/(?:разположен|намира)\D{0,40}([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i);
@@ -1118,7 +1132,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
 
   const price = result.price || externalExtractPrice(combinedText);
   const area = result.area || externalExtractArea(combinedText);
-  const rooms = externalExtractRooms(combinedText);
+  const rooms = result.rooms ? String(result.rooms) : externalExtractRooms(combinedText);
   const floor = result.floor === 0 || result.floor
     ? result.floor
     : externalExtractFloor(combinedText);
