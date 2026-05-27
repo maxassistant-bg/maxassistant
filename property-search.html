@@ -961,6 +961,9 @@ function externalExtractRooms(text) {
     if (bedroomCount) return String(bedroomCount + 1);
   }
 
+  const roomTypeMatch = value.match(/(^|[^\d])([1-4])\s*-?\s*стаен(?:$|[^\p{L}])/iu);
+  if (roomTypeMatch) return roomTypeMatch[2];
+
   if (/студио|едностаен|studio/.test(value)) return "1";
   const roomMatch = value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^\p{L}])/iu);
   if (roomMatch) return roomMatch[2];
@@ -981,7 +984,7 @@ function externalExtractFloor(text) {
 
   const match =
     value.match(/ет\.?\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
-    value.match(/етаж\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
+    value.match(/етаж\s*([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
     value.match(/номер\s+на\s+етажа\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
     value.match(/(?:разположен|намира)\D{0,40}([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i);
@@ -1105,6 +1108,7 @@ function externalFormatBeachEvidence(evidence) {
 }
 
 function externalFormatConstructionStatus(status) {
+  if (status === "introduced") return "Въведен в експлоатация";
   if (status === "act16") return "Акт 16 / разрешение за ползване";
   if (status === "pre_act16") return "Пред Акт 16";
   if (status === "project_stage") return "В проект / без Акт 16";
@@ -1148,6 +1152,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const complexAmenities = Array.isArray(result.complex_amenities) ? result.complex_amenities : [];
   const externalIntelligence = Array.isArray(result.external_intelligence) ? result.external_intelligence : [];
   const maintenanceFeeText = result.maintenance_fee_text || "";
+  const furnishingStatus = result.furnishing_status || "";
   const constructionStatus = externalFormatConstructionStatus(result.construction_status || "");
   const layoutText = normalizeText(layoutDetails.join(" "));
   const finalBathrooms = bathrooms || (layoutText.includes("баня") ? 1 : "");
@@ -1182,7 +1187,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     layout_details: layoutDetails,
     complex_amenities: complexAmenities,
     complexInfo: null,
-    furnishing_status: "",
+    furnishing_status: furnishingStatus,
     price_per_m2: price && area ? Math.round(price / area) : "",
     construction_stage: ["under_construction", "project_stage"].includes(result.construction_status) ? constructionStatus : "",
     completion_status: constructionStatus,
