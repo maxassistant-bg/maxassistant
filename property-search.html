@@ -1111,7 +1111,9 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const price = externalExtractPrice(combinedText);
   const area = externalExtractArea(combinedText);
   const rooms = externalExtractRooms(combinedText);
-  const floor = result.floor || externalExtractFloor(combinedText);
+  const floor = result.floor === 0 || result.floor
+    ? result.floor
+    : externalExtractFloor(combinedText);
   const bathrooms = externalExtractCount(combinedText, ["бани", "баня", "bathrooms?", "bath"]);
   const toilets = externalExtractCount(combinedText, ["тоалетни", "тоалетна", "wc", "toilets?"]);
   const propertyType = externalInferPropertyType(combinedText, rooms, result.type);
@@ -1133,7 +1135,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     price: price || "",
     area: area || "",
     rooms: rooms || "",
-    floor: floor || "",
+    floor: floor === 0 || floor ? floor : "",
     view: featureLabels || beachLine || "",
     property_type: propertyType,
     complex: title,
@@ -1629,4 +1631,3 @@ function scrollToSearch() {
 
 </body>
 </html>
-
