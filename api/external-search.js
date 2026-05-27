@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v26_external_image_extraction";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v25_imot_discovery_urls";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -1312,115 +1312,30 @@ function extractMeta(html, name) {
 }
 
 function extractImage(html, pageUrl = "") {
-  const candidates = [];
-  const addCandidate = value => {
-    const normalized = normalizeImageUrl(value, pageUrl);
-    if (normalized && isConcreteListingImage(normalized)) {
-      candidates.push(normalized);
-    }
-  };
+  let image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
 
-  addCandidate(extractMeta(html, "og:image"));
-  addCandidate(extractMeta(html, "twitter:image"));
+  if (!image) {
+    const imgRegex = /<img[^>]+(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["'][^>]*>/gi;
+    let match;
 
-  const linkImageRegex = /<link[^>]+(?:rel=["'][^"']*(?:image_src|preload)[^"']*["'][^>]+href=["']([^"']+)["']|href=["']([^"']+)["'][^>]+rel=["'][^"']*(?:image_src|preload)[^"']*["'])[^>]*>/gi;
-  let linkMatch;
+    while ((match = imgRegex.exec(html)) !== null) {
+      const candidate = toAbsoluteUrl(match[1], pageUrl);
+      if (!candidate) continue;
 
-  while ((linkMatch = linkImageRegex.exec(html)) !== null) {
-    addCandidate(linkMatch[1] || linkMatch[2]);
-  }
+      const lower = candidate.toLowerCase();
 
-  const imgRegex = /<img\b[^>]*>/gi;
-  let imgMatch;
+      if (lower.includes("logo")) continue;
+      if (lower.includes("icon")) continue;
+      if (lower.includes("sprite")) continue;
+      if (lower.includes("placeholder")) continue;
+      if (lower.includes("blank")) continue;
 
-  while ((imgMatch = imgRegex.exec(html)) !== null) {
-    const tag = imgMatch[0];
-    const attrRegex = /\b(src|data-src|data-original|data-lazy-src|data-full|data-big|data-large|data-image|data-url|content)=["']([^"']+)["']/gi;
-    let attrMatch;
-
-    while ((attrMatch = attrRegex.exec(tag)) !== null) {
-      addCandidate(attrMatch[2]);
-    }
-
-    const srcsetMatch = tag.match(/\b(?:srcset|data-srcset)=["']([^"']+)["']/i);
-
-    if (srcsetMatch) {
-      srcsetMatch[1]
-        .split(",")
-        .map(part => part.trim().split(/\s+/)[0])
-        .forEach(addCandidate);
+      image = candidate;
+      break;
     }
   }
 
-  const backgroundRegex = /(?:background-image|background)\s*:\s*url\(["']?([^"')]+)["']?\)/gi;
-  let backgroundMatch;
-
-  while ((backgroundMatch = backgroundRegex.exec(html)) !== null) {
-    addCandidate(backgroundMatch[1]);
-  }
-
-  return [...new Set(candidates)]
-    .sort((a, b) => scoreImageCandidate(b, pageUrl) - scoreImageCandidate(a, pageUrl))[0] || "";
-}
-
-function normalizeImageUrl(value, pageUrl = "") {
-  const raw = decodeHtml(String(value || ""))
-    .replace(/\\\//g, "/")
-    .trim();
-
-  if (!raw) return "";
-  if (raw.startsWith("data:")) return "";
-
-  const firstFromSrcset = raw.includes(",")
-    ? raw.split(",")[0].trim().split(/\s+/)[0]
-    : raw.split(/\s+/)[0];
-
-  return toAbsoluteUrl(firstFromSrcset, pageUrl);
-}
-
-function isConcreteListingImage(url) {
-  const lower = String(url || "").toLowerCase();
-
-  if (!lower) return false;
-  if (!/^https?:\/\//i.test(lower)) return false;
-  if (!/\.(jpg|jpeg|png|webp)(\?|#|$)/i.test(lower)) return false;
-
-  return ![
-    "logo",
-    "icon",
-    "sprite",
-    "placeholder",
-    "blank",
-    "noimage",
-    "no-image",
-    "avatar",
-    "banner",
-    "captcha",
-    "loading",
-    "facebook",
-    "instagram"
-  ].some(part => lower.includes(part));
-}
-
-function scoreImageCandidate(url, pageUrl = "") {
-  const lower = String(url || "").toLowerCase();
-  let score = 0;
-
-  if (/alo\.bg|imot\.bg|realistimo\.com|newhomebulgaria\.com/.test(lower)) score += 30;
-  if (/photos|images|pics|uploads|obiavi|offers|listings|properties|imoti/.test(lower)) score += 18;
-  if (/\.(jpg|jpeg|webp)(\?|#|$)/i.test(lower)) score += 8;
-  if (/thumb|small|mini/.test(lower)) score -= 10;
-
-  try {
-    const imageHost = new URL(url).hostname.replace(/^www\./, "");
-    const pageHost = pageUrl ? new URL(pageUrl).hostname.replace(/^www\./, "") : "";
-
-    if (pageHost && imageHost.endsWith(pageHost)) score += 10;
-  } catch {
-    return score;
-  }
-
-  return score;
+  return image;
 }
 
 async function fetchText(url) {
