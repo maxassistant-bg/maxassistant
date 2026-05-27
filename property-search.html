@@ -1099,6 +1099,14 @@ function externalFormatConstructionStatus(status) {
   return "";
 }
 
+function externalFeatureLabelsForView(labels) {
+  return String(labels || "")
+    .split(",")
+    .map(label => label.trim())
+    .filter(label => /гледка|панорама|sea view/i.test(label))
+    .join(", ");
+}
+
 function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
 
   const combinedText = [
@@ -1119,6 +1127,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
   const propertyType = externalInferPropertyType(combinedText, rooms, result.type);
   const beachLine = externalFormatBeachEvidence(result.beach_evidence);
   const featureLabels = result.feature_labels || "";
+  const viewLabels = externalFeatureLabelsForView(featureLabels);
   const sourceName = result.source || "Външен източник";
   const title = result.title || "Външен резултат";
   const layoutDetails = Array.isArray(result.layout_details) ? result.layout_details : [];
@@ -1136,7 +1145,7 @@ function normalizeExternalResultAsProperty(result, fallbackLocation = "") {
     area: area || "",
     rooms: rooms || "",
     floor: floor === 0 || floor ? floor : "",
-    view: featureLabels || beachLine || "",
+    view: viewLabels || "",
     property_type: propertyType,
     complex: title,
     location: fallbackLocation || "Външен източник",
