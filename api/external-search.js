@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v18_api_floor_extraction";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v25_imot_discovery_urls";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -407,7 +407,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
 
-  if (strictResults.length >= MAX_RESULTS_PER_SOURCE) {
+  if (strictResults.length >= 1) {
     return strictResults.slice(0, MAX_RESULTS_PER_SOURCE);
   }
 
@@ -431,7 +431,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   ])
     .sort((a, b) => b.score - a.score);
 
-  if (combinedResults.length < MAX_RESULTS_PER_SOURCE && queryIntent.location) {
+  if (combinedResults.length < 6 && queryIntent.location) {
     const broadIntent = {
       ...queryIntent,
       propertyType: null,
@@ -526,19 +526,58 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
 
   if (source.domain === "imot.bg") {
     return unique([
+      `https://www.imot.bg/obiavi/prodazhbi?f42=${encodedBg}`,
+      `https://www.imot.bg/obiavi/prodazhbi?rub=1&f42=${encodedBg}`,
+      `https://www.imot.bg/obiavi/prodazhbi?f42=${encodedLatin}`,
       `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedBg}`,
       `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedLatin}`
     ]);
   }
 
   if (source.domain === "realistimo.com") {
+    const locationSlug = getRealistimoLocationSlug(location);
+    const propertyPath = getRealistimoPropertyPath(propertyType);
+    const priceParam = queryIntent.budget ? `?price_max=${queryIntent.budget}` : "";
+    const structuredUrls = locationSlug
+      ? [
+          `https://realistimo.com/bg/buy/${locationSlug}${propertyPath}${priceParam}`,
+          `https://realistimo.com/bg/buy/${locationSlug}${priceParam}`
+        ]
+      : [];
+
     return unique([
+      ...structuredUrls,
       `https://realistimo.com/bg/buy?query=${encodedBg}`,
       `https://realistimo.com/bg/buy?query=${encodedLatin}`
     ]);
   }
 
   return [];
+}
+
+function getRealistimoLocationSlug(location) {
+  if (!location) return "";
+
+  const slugs = {
+    "sozopol": "sozopol-burgas-bg",
+    "sunny beach": "sunny-beach-burgas-bg",
+    "sveti vlas": "sveti-vlas-burgas-bg",
+    "burgas": "burgas-burgas-bg",
+    "chernomorets": "chernomorets-burgas-bg",
+    "pomorie": "pomorie-burgas-bg",
+    "ravda": "ravda-burgas-bg",
+    "nesebar": "nesebar-burgas-bg",
+    "lozenets": "lozenets-burgas-bg",
+    "tsarevo": "tsarevo-burgas-bg"
+  };
+
+  return slugs[location.latin] || "";
+}
+
+function getRealistimoPropertyPath(propertyType) {
+  if (!propertyType) return "/properties";
+
+  return "/apartments";
 }
 
 function extractListingUrlsFromSearchPage(source, html, pageUrl) {
@@ -690,12 +729,14 @@ function scoreDetailResult(detail, queryIntent, source, baseScore, mode) {
 
   if (queryIntent.propertyType) {
     const exactType = queryIntent.propertyType.aliases.some(alias => all.includes(normalize(alias)));
+    const extractedRooms = extractRooms(all);
+    const roomsMatch = extractedRooms && queryIntent.propertyType.rooms === extractedRooms;
     const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
 
     if (conflictType) {
       score -= mode === "trusted_site" ? 35 : 120;
       reasons.push("открит е различен тип имот: " + conflictType);
-    } else if (exactType) {
+    } else if (exactType || roomsMatch) {
       score += 32;
       reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
     } else if (hasGeneralApartmentSignal(all)) {
@@ -798,7 +839,11 @@ function parseQueryIntent(query) {
 }
 
 function extractRooms(text) {
-  const match = String(text || "").match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i);
+  const match =
+    String(text || "").match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i) ||
+    String(text || "").match(/\b([1-4])\s*-\s*стаен\b/i) ||
+    String(text || "").match(/\b([1-4])\s+стаен\b/i);
+
   return match ? Number(match[1]) : null;
 }
 
@@ -897,7 +942,7 @@ function extractFloor(text) {
 }
 
 function hasGeneralApartmentSignal(text) {
-  return /апартамент|студио|спалн|едностаен|двустаен|тристаен|жилищ|имот|етаж|продажба|продава/i.test(text);
+  return /апартамент|apartament|apartment|студио|спалн|едностаен|двустаен|тристаен|1\s*-\s*стаен|2\s*-\s*стаен|3\s*-\s*стаен|жилищ|имот|етаж|продажба|продава/i.test(text);
 }
 
 /* =========================
@@ -957,11 +1002,17 @@ function isConcreteListingUrl(url, source) {
   }
 
   if (source.domain === "imot.bg") {
-    return lower.includes("imot.cgi") && lower.includes("act=5");
+    return (
+      (lower.includes("imot.cgi") && lower.includes("act=5")) ||
+      /\/obiava-[a-z0-9-]+/i.test(lower)
+    );
   }
 
   if (source.domain === "realistimo.com") {
-    return /\/bg\/(buy|property)\/[^/?#]+/i.test(lower) && !lower.includes("/bg/buy?");
+    return (
+      /\/bg\/(buy|property|properties)\/[^/?#]+/i.test(lower) &&
+      !lower.includes("/bg/buy?")
+    );
   }
 
   return false;
@@ -1005,14 +1056,20 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
     detail.tableText,
     url
   ].join(" "));
+  const primaryText = normalize([
+    detail.title,
+    detail.description,
+    url
+  ].join(" "));
 
   if (!hasGeneralApartmentSignal(all)) {
     return false;
   }
 
   if (queryIntent.location) {
+    const locationCheckText = source.type === "trusted_portal" ? primaryText : all;
     const hasLocation = queryIntent.location.aliases.some(alias =>
-      all.includes(normalize(alias))
+      locationCheckText.includes(normalize(alias))
     );
 
     if (!hasLocation) {
@@ -1020,18 +1077,25 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
     }
   }
 
+  if (queryIntent.budget && detail.price && detail.price > queryIntent.budget) {
+    return false;
+  }
+
   if (queryIntent.propertyType) {
-    const conflictType = detectConflictingPropertyType(all, queryIntent.propertyType);
+    const typeCheckText = source.type === "trusted_portal" ? primaryText : all;
+    const conflictType = detectConflictingPropertyType(typeCheckText, queryIntent.propertyType);
 
     if (conflictType) {
       return false;
     }
 
     const exactType = queryIntent.propertyType.aliases.some(alias =>
-      all.includes(normalize(alias))
+      typeCheckText.includes(normalize(alias))
     );
+    const extractedRooms = extractRooms(typeCheckText);
+    const roomsMatch = extractedRooms && queryIntent.propertyType.rooms === extractedRooms;
 
-    if (!exactType && source.type === "trusted_portal") {
+    if (!exactType && !roomsMatch && source.type === "trusted_portal") {
       return false;
     }
   }
@@ -1039,14 +1103,31 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
   return Boolean(detail.price || detail.area || /€|eur|евро|кв м|кв\.м|m2|m²/.test(all));
 }
 
+function imotTitleMatchesRequestedType(title, requestedType) {
+  const normalized = normalize(title);
+
+  if (!requestedType) return true;
+
+  const rules = {
+    "студио": /студио|едностаен|1\s*-\s*стаен|1\s+стаен|1стаен|1 стая/i,
+    "една спалня": /една спалня|двустаен|2\s*-\s*стаен|2\s+стаен|2стаен|2 стаи/i,
+    "две спални": /две спални|тристаен|3\s*-\s*стаен|3\s+стаен|3стаен|3 стаи/i,
+    "три спални": /три спални|четиристаен|4\s*-\s*стаен|4\s+стаен|4стаен|4 стаи/i
+  };
+
+  const rule = rules[requestedType.canonical];
+
+  return rule ? rule.test(normalized) : true;
+}
+
 function detectConflictingPropertyType(text, requestedType) {
   const normalized = normalize(text);
 
   if (!requestedType) return "";
 
-  const hasStudio = /студио|едностаен|1 стая|1стаен|studio/.test(normalized);
-  const hasOneBedroom = /една спалня|1 спалня|двустаен|две стаи|2 стаи|one bedroom/.test(normalized);
-  const hasTwoBedroom = /две спални|2 спални|тристаен|три стаи|3 стаи|two bedroom/.test(normalized);
+  const hasStudio = /студио|едностаен|1 стая|1стаен|1-стаен|1 стаен|studio/.test(normalized);
+  const hasOneBedroom = /една спалня|1 спалня|двустаен|2-стаен|2 стаен|две стаи|2 стаи|one bedroom/.test(normalized);
+  const hasTwoBedroom = /две спални|2 спални|тристаен|3-стаен|3 стаен|три стаи|3 стаи|two bedroom/.test(normalized);
 
   if (requestedType.canonical === "студио") {
     if (hasOneBedroom) return "една спалня";
@@ -1273,7 +1354,19 @@ async function fetchText(url) {
 
     if (!response.ok) return "";
 
-    return await response.text();
+    const bytes = await response.arrayBuffer();
+    const contentType = response.headers.get("content-type") || "";
+    const sample = new TextDecoder("utf-8").decode(bytes.slice(0, 1200));
+    const charsetMatch =
+      contentType.match(/charset=([^;]+)/i) ||
+      sample.match(/charset=["']?([^"'>\s;]+)/i);
+    const charset = charsetMatch ? charsetMatch[1].toLowerCase() : "utf-8";
+
+    if (charset.includes("windows-1251") || charset.includes("cp1251")) {
+      return new TextDecoder("windows-1251").decode(bytes);
+    }
+
+    return new TextDecoder("utf-8").decode(bytes);
   } catch (error) {
     return "";
   } finally {
