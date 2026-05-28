@@ -89,7 +89,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v32_external_timeout_guard";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v33_strict_requested_type";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -440,8 +440,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   }
 
   const relaxedIntent = {
-    ...queryIntent,
-    propertyType: null
+    ...queryIntent
   };
 
   const relaxedDetailPages = await Promise.all(
@@ -462,7 +461,6 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   if (combinedResults.length < 6 && queryIntent.location) {
     const broadIntent = {
       ...queryIntent,
-      propertyType: null,
       budget: null,
       minArea: null
     };
