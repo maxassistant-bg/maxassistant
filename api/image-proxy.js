@@ -15,6 +15,7 @@ const ALLOWED_IMAGE_HOSTS = [
   "cdn5.focus.bg",
   "realistimo.com",
   "www.realistimo.com",
+  "static.realistimo.com",
   "newhomebulgaria.com",
   "www.newhomebulgaria.com"
 ];
