@@ -34,16 +34,16 @@ const SOURCES = [
 ];
 
 const KNOWN_LOCATIONS = [
-  { canonical: "созопол", latin: "sozopol", aliases: ["созопол", "sozopol"], aloRegionId: "2", aloLocationId: "490" },
-  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"], aloRegionId: "2", aloLocationId: "5549" },
-  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"], aloRegionId: "2", aloLocationId: "314" },
-  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"], aloRegionId: "2", aloLocationId: "300" },
-  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"], aloRegionId: "2", aloLocationId: "526" },
-  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"], aloRegionId: "2", aloLocationId: "445" },
-  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"], aloRegionId: "2", aloLocationId: "456" },
-  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"], aloRegionId: "2", aloLocationId: "430" },
-  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"], aloRegionId: "2", aloLocationId: "410" },
-  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo", "carevo"], aloRegionId: "2", aloLocationId: "423" }
+  { canonical: "созопол", latin: "sozopol", aliases: ["созопол", "sozopol"], aloRegionId: "2", aloLocationId: "490", imotPath: "oblast-burgas/gr-sozopol" },
+  { canonical: "слънчев бряг", latin: "sunny beach", aliases: ["слънчев бряг", "slanchev bryag", "sunny beach", "sunny-beach"], aloRegionId: "2", aloLocationId: "5549", imotPath: "oblast-burgas/k-k-slanchev-bryag" },
+  { canonical: "свети влас", latin: "sveti vlas", aliases: ["свети влас", "sveti vlas", "sveti-vlas", "vlas"], aloRegionId: "2", aloLocationId: "314", imotPath: "oblast-burgas/gr-sveti-vlas" },
+  { canonical: "бургас", latin: "burgas", aliases: ["бургас", "burgas"], aloRegionId: "2", aloLocationId: "300", imotPath: "grad-burgas" },
+  { canonical: "черноморец", latin: "chernomorets", aliases: ["черноморец", "chernomorets"], aloRegionId: "2", aloLocationId: "526", imotPath: "oblast-burgas/gr-chernomorets" },
+  { canonical: "поморие", latin: "pomorie", aliases: ["поморие", "pomorie"], aloRegionId: "2", aloLocationId: "445", imotPath: "oblast-burgas/gr-pomorie" },
+  { canonical: "равда", latin: "ravda", aliases: ["равда", "ravda"], aloRegionId: "2", aloLocationId: "456", imotPath: "oblast-burgas/s-ravda" },
+  { canonical: "несебър", latin: "nesebar", aliases: ["несебър", "nesebar", "nessebar"], aloRegionId: "2", aloLocationId: "430", imotPath: "oblast-burgas/gr-nesebar" },
+  { canonical: "лозенец", latin: "lozenets", aliases: ["лозенец", "lozenets"], aloRegionId: "2", aloLocationId: "410", imotPath: "oblast-burgas/s-lozenets" },
+  { canonical: "царево", latin: "tsarevo", aliases: ["царево", "tsarevo", "carevo"], aloRegionId: "2", aloLocationId: "423", imotPath: "oblast-burgas/gr-tsarevo" }
 ];
 
 const PROPERTY_TYPE_RULES = [
@@ -89,7 +89,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v33_strict_requested_type";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v35_imot_structured_category_urls";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -551,13 +551,28 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   }
 
   if (source.domain === "imot.bg") {
+    const imotTypeTerm = getImotPropertyTypeTerm(propertyType);
+    const imotTypeSlug = getImotPropertyTypeSlug(propertyType);
+    const imotBgQuery = normalizeSpaces([
+      location ? location.canonical : "",
+      imotTypeTerm,
+      queryIntent.budget ? "до " + queryIntent.budget + " евро" : ""
+    ].filter(Boolean).join(" ") || bgQuery);
+    const imotEncodedBg = encodeURIComponent(imotBgQuery);
+    const structuredCategory = location && location.imotPath && imotTypeSlug
+      ? `https://www.imot.bg/obiavi/prodazhbi/${location.imotPath}/${imotTypeSlug}`
+      : "";
+
     return unique([
+      structuredCategory,
+      `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${imotEncodedBg}`,
+      `https://www.imot.bg/obiavi/prodazhbi?rub=1&f42=${imotEncodedBg}`,
       `https://www.imot.bg/obiavi/prodazhbi?f42=${encodedBg}`,
       `https://www.imot.bg/obiavi/prodazhbi?rub=1&f42=${encodedBg}`,
       `https://www.imot.bg/obiavi/prodazhbi?f42=${encodedLatin}`,
       `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedBg}`,
       `https://www.imot.bg/pcgi/imot.cgi?act=3&rub=1&keywords=${encodedLatin}`
-    ]);
+    ].filter(Boolean));
   }
 
   if (source.domain === "realistimo.com") {
@@ -579,6 +594,32 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   }
 
   return [];
+}
+
+function getImotPropertyTypeTerm(propertyType) {
+  if (!propertyType || !propertyType.rooms) return "";
+
+  const roomTerms = {
+    1: "1-СТАЕН",
+    2: "2-СТАЕН",
+    3: "3-СТАЕН",
+    4: "4-СТАЕН"
+  };
+
+  return roomTerms[propertyType.rooms] || "";
+}
+
+function getImotPropertyTypeSlug(propertyType) {
+  if (!propertyType || !propertyType.rooms) return "";
+
+  const roomSlugs = {
+    1: "ednostaen",
+    2: "dvustaen",
+    3: "tristaen",
+    4: "chetiristaen"
+  };
+
+  return roomSlugs[propertyType.rooms] || "";
 }
 
 function getRealistimoLocationSlug(location) {
@@ -1140,9 +1181,9 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
 
   if (queryIntent.propertyType) {
     const typeCheckText = source.type === "trusted_portal" ? primaryText : all;
-    const conflictType = detectConflictingPropertyType(typeCheckText, queryIntent.propertyType);
+    const titleConflictType = detectConflictingPropertyType(detail.title, queryIntent.propertyType);
 
-    if (conflictType) {
+    if (titleConflictType) {
       return false;
     }
 
@@ -1151,6 +1192,11 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
     );
     const extractedRooms = extractRooms(typeCheckText);
     const roomsMatch = extractedRooms && queryIntent.propertyType.rooms === extractedRooms;
+    const conflictType = detectConflictingPropertyType(typeCheckText, queryIntent.propertyType);
+
+    if (conflictType && !exactType && !roomsMatch) {
+      return false;
+    }
 
     if (!exactType && !roomsMatch && source.type === "trusted_portal") {
       return false;
