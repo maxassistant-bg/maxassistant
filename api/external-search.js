@@ -78,18 +78,19 @@ const PROPERTY_TYPE_RULES = [
 ];
 
 const REQUEST_TIMEOUT_MS = 3500;
+const READER_TIMEOUT_MS = 10000;
 const MAX_RESULTS = 20;
 const MAX_SEARCH_PAGES = 1;
 const MAX_DETAIL_FETCHES_PER_SOURCE = 8;
 const MAX_RESULTS_PER_SOURCE = 20;
-const SOURCE_TIMEOUT_MS = 12000;
+const SOURCE_TIMEOUT_MS = 30000;
 const MIN_NEWHOME_SCORE = 42;
 const MIN_PORTAL_SCORE = 58;
 const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v37_relevance_first_sorting";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v42_realistimo_clean_direct_titles";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -404,6 +405,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
   diag.generated_search_urls = searchUrls.length;
 
   const listingUrls = [];
+  const directResults = [];
 
   for (const searchUrl of searchUrls.slice(0, MAX_SEARCH_PAGES)) {
     const html = await fetchText(searchUrl);
@@ -411,15 +413,25 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
 
     diag.fetched_search_pages += 1;
 
+    if (source.domain === "realistimo.com") {
+      directResults.push(...extractRealistimoResultsFromSearchPage(source, html, queryIntent));
+    }
+
     const extracted = extractListingUrlsFromSearchPage(source, html, searchUrl);
     listingUrls.push(...extracted);
+  }
+
+  if (directResults.length >= 1) {
+    return deduplicateResults(directResults)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RESULTS_PER_SOURCE);
   }
 
   const uniqueListingUrls = unique(listingUrls)
     .filter(url => isAllowedUrl(url, source.domain))
     .filter(url => !isBlockedUrl(url))
     .filter(url => isConcreteListingUrl(url, source))
-    .slice(0, MAX_DETAIL_FETCHES_PER_SOURCE);
+    .slice(0, getMaxDetailFetchesForSource(source));
 
   diag.extracted_listing_urls = uniqueListingUrls.length;
 
@@ -482,7 +494,7 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
       .filter(url => isAllowedUrl(url, source.domain))
       .filter(url => !isBlockedUrl(url))
       .filter(url => isConcreteListingUrl(url, source))
-      .slice(0, MAX_DETAIL_FETCHES_PER_SOURCE);
+      .slice(0, getMaxDetailFetchesForSource(source));
 
     diag.extracted_listing_urls += extraListingUrls.length;
     diag.fetched_detail_pages += extraListingUrls.length;
@@ -596,6 +608,124 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
   return [];
 }
 
+function getMaxDetailFetchesForSource(source) {
+  if (source && source.domain === "realistimo.com") return 4;
+
+  return MAX_DETAIL_FETCHES_PER_SOURCE;
+}
+
+function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
+  const results = [];
+  const text = String(html || "");
+  const linkRegex = /\]\((https?:\/\/realistimo\.com\/bg\/buy\/offer-[^)]+)\)/gi;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null && results.length < MAX_RESULTS_PER_SOURCE) {
+    const url = toAbsoluteUrl(match[1], source.baseUrl);
+    const start = Math.max(0, match.index - 900);
+    const block = text.slice(start, match.index);
+    const imageMatches = [...block.matchAll(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi)];
+    const lastImageMatch = imageMatches.length ? imageMatches[imageMatches.length - 1] : null;
+    const image = lastImageMatch ? lastImageMatch[1] : "";
+    const listingBlock = lastImageMatch
+      ? block.slice(lastImageMatch.index + lastImageMatch[0].length)
+      : block;
+    const titleText = cleanText(listingBlock
+      .replace(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi, " ")
+      .replace(/\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi, " "));
+
+    const compactTitle = titleText
+      .replace(/^.*\]\(https?:\/\/[^)]+\)\s*/i, "")
+      .replace(/\]\(https?:\/\/[^)]+\)/gi, "")
+      .trim();
+    const title = compactTitle.length > 220
+      ? compactTitle.slice(compactTitle.length - 220)
+      : compactTitle;
+    const normalized = normalize([title, url].join(" "));
+
+    if (!url || !image || !title) continue;
+    if (queryIntent.location) {
+      const hasLocation = queryIntent.location.aliases.some(alias =>
+        normalized.includes(normalize(alias))
+      );
+      if (!hasLocation) continue;
+    }
+
+    const price = extractPrice(title);
+    const area = extractArea(title);
+    const rooms = extractRooms(title);
+
+    if (queryIntent.propertyType) {
+      const conflict = detectConflictingPropertyType(title, queryIntent.propertyType);
+      const exactType = queryIntent.propertyType.aliases.some(alias =>
+        normalized.includes(normalize(alias))
+      );
+      const roomsMatch = rooms && rooms === queryIntent.propertyType.rooms;
+
+      if (conflict || (!exactType && !roomsMatch)) continue;
+    }
+
+    let score = source.priority / 20 + 85;
+    const reasons = ["резултатът е извлечен от конкретна Realistimo обява в списъка"];
+
+    if (queryIntent.location) {
+      score += 40;
+      reasons.push("съвпада със зададената локация: " + queryIntent.location.canonical);
+    }
+
+    if (queryIntent.propertyType && rooms === queryIntent.propertyType.rooms) {
+      score += 32;
+      reasons.push("съвпада с търсения тип имот: " + queryIntent.propertyType.canonical);
+    }
+
+    if (queryIntent.budget && price) {
+      if (price <= queryIntent.budget) {
+        score += 30;
+        reasons.push("цената е в бюджета");
+      } else {
+        const overBudgetRatio = (price - queryIntent.budget) / queryIntent.budget;
+        score -= overBudgetRatio > 0.25 ? 45 : 18;
+        reasons.push("цената е над бюджета, но обявата е близка възможност");
+      }
+    }
+
+    if (price) score += 16;
+    if (area) score += 14;
+    if (image) score += 5;
+
+    results.push({
+      title: title || "Realistimo обява",
+      url,
+      image,
+      excerpt: title,
+      price: price || null,
+      area: area || null,
+      rooms: rooms || null,
+      floor: extractFloor(title) || "",
+      source: source.name,
+      source_domain: source.domain,
+      source_type: source.type,
+      source_priority: source.priority,
+      type: "external_portal_listing_detail",
+      real_property_match: true,
+      has_table: false,
+      match_reason: reasons.join("; "),
+      features: [],
+      feature_labels: "",
+      layout_details: [],
+      complex_amenities: [],
+      maintenance_fee_text: "",
+      furnishing_status: "",
+      construction_status: "",
+      external_intelligence: ["Realistimo обява, извлечена директно от списъка с резултати"],
+      beach_evidence: null,
+      score: Math.round(score * 10) / 10
+    });
+  }
+
+  return results;
+}
+
 function getImotPropertyTypeTerm(propertyType) {
   if (!propertyType || !propertyType.rooms) return "";
 
@@ -669,8 +799,11 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
   if (!html) return null;
 
   const detail = extractDetailFromHtml(html, url);
+  const concreteDetail = source.domain === "realistimo.com"
+    ? isConcreteRealistimoDetailPage(detail, url, queryIntent)
+    : isConcreteDetailPage(detail, url, source, queryIntent);
 
-  if (!isConcreteDetailPage(detail, url, source, queryIntent)) {
+  if (!concreteDetail) {
     return null;
   }
 
@@ -678,7 +811,8 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
 
   const minScore = options.minScore ?? MIN_PORTAL_SCORE;
 
-  if (scored.score < minScore) return null;
+  if (scored.score < minScore && source.domain !== "realistimo.com") return null;
+  if (scored.score < MIN_PORTAL_FALLBACK_SCORE && source.domain === "realistimo.com") return null;
 
   const reasons = scored.reasons.slice(0, 6);
 
@@ -712,7 +846,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     construction_status: detail.construction_status || "",
     external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
-    score: Math.round(scored.score * 10) / 10
+    score: Math.round(Math.max(scored.score, source.domain === "realistimo.com" ? 120 : scored.score) * 10) / 10
   };
 }
 
@@ -1183,10 +1317,6 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
     }
   }
 
-  if (queryIntent.budget && detail.price && detail.price > queryIntent.budget) {
-    return false;
-  }
-
   if (queryIntent.propertyType) {
     const typeCheckText = source.type === "trusted_portal" ? primaryText : all;
     const titleConflictType = detectConflictingPropertyType(detail.title, queryIntent.propertyType);
@@ -1212,6 +1342,46 @@ function isConcreteDetailPage(detail, url, source, queryIntent) {
   }
 
   return Boolean(detail.price || detail.area || /€|eur|евро|кв м|кв\.м|m2|m²/.test(all));
+}
+
+function isConcreteRealistimoDetailPage(detail, url, queryIntent) {
+  if (!detail || !detail.title) return false;
+  if (!/\/bg\/buy\/offer-[a-z0-9-]+\/?$/i.test(String(url || ""))) return false;
+
+  const all = normalize([
+    detail.title,
+    detail.description,
+    detail.excerpt,
+    detail.clean,
+    detail.tableText,
+    url
+  ].join(" "));
+
+  if (!hasGeneralApartmentSignal(all)) return false;
+
+  if (queryIntent.location) {
+    const hasLocation = queryIntent.location.aliases.some(alias =>
+      all.includes(normalize(alias))
+    );
+
+    if (!hasLocation) return false;
+  }
+
+  if (queryIntent.propertyType) {
+    const titleConflict = detectConflictingPropertyType(detail.title, queryIntent.propertyType);
+
+    if (titleConflict) return false;
+
+    const exactType = queryIntent.propertyType.aliases.some(alias =>
+      all.includes(normalize(alias))
+    );
+    const extractedRooms = extractRooms(all);
+    const roomsMatch = extractedRooms && queryIntent.propertyType.rooms === extractedRooms;
+
+    if (!exactType && !roomsMatch) return false;
+  }
+
+  return Boolean(detail.image && (detail.price || detail.area));
 }
 
 function imotTitleMatchesRequestedType(title, requestedType) {
@@ -1591,7 +1761,7 @@ function isRealistimoUrl(url) {
 
 async function fetchReaderText(url) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), READER_TIMEOUT_MS);
   const readerUrl = `https://r.jina.ai/http://r.jina.ai/http://${url}`;
 
   try {
