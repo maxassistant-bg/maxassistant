@@ -82,14 +82,14 @@ const MAX_RESULTS = 20;
 const MAX_SEARCH_PAGES = 1;
 const MAX_DETAIL_FETCHES_PER_SOURCE = 8;
 const MAX_RESULTS_PER_SOURCE = 20;
-const SOURCE_TIMEOUT_MS = 8000;
+const SOURCE_TIMEOUT_MS = 12000;
 const MIN_NEWHOME_SCORE = 42;
 const MIN_PORTAL_SCORE = 58;
 const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v36_realistimo_reader_offers";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v37_relevance_first_sorting";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -248,8 +248,8 @@ module.exports = async function handler(req, res) {
 
     const results = deduplicateResults(allResults)
       .sort((a, b) => {
-        if (b.source_priority !== a.source_priority) return b.source_priority - a.source_priority;
-        return b.score - a.score;
+        if (b.score !== a.score) return b.score - a.score;
+        return b.source_priority - a.source_priority;
       })
       .slice(0, MAX_RESULTS);
 
