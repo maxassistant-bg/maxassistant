@@ -88,7 +88,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v29_realistimo_card_fields";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v31_external_api_safe_regex";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -349,7 +349,7 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     price: detail.price || null,
     area: detail.area || null,
     rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
-    floor: detail.floor || "",
+    floor: detail.floor === 0 || detail.floor ? detail.floor : "",
     source: source.name,
     source_domain: source.domain,
     source_type: source.type,
@@ -363,6 +363,7 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     layout_details: detail.layout_details || [],
     complex_amenities: detail.complex_amenities || [],
     maintenance_fee_text: detail.maintenance_fee_text || "",
+    furnishing_status: detail.furnishing_status || "",
     construction_status: detail.construction_status || "",
     external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
@@ -623,7 +624,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     price: detail.price || null,
     area: detail.area || null,
     rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
-    floor: detail.floor || "",
+    floor: detail.floor === 0 || detail.floor ? detail.floor : "",
     source: source.name,
     source_domain: source.domain,
     source_type: source.type,
@@ -637,6 +638,7 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     layout_details: detail.layout_details || [],
     complex_amenities: detail.complex_amenities || [],
     maintenance_fee_text: detail.maintenance_fee_text || "",
+    furnishing_status: detail.furnishing_status || "",
     construction_status: detail.construction_status || "",
     external_intelligence: detail.external_intelligence || [],
     beach_evidence: scored.beach_evidence || null,
@@ -690,6 +692,7 @@ function extractDetailFromHtml(html, url) {
     price,
     area,
     floor,
+    furnishing_status: intelligence.furnishing_status || "",
     construction_status,
     ...intelligence,
     hasTable: Boolean(tableText)
@@ -847,9 +850,14 @@ function parseQueryIntent(query) {
 function extractRooms(text) {
   const value = String(text || "");
 
-  if (/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu.test(value)) {
-    const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu);
+  if (/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^A-Za-zА-Яа-яЁё])/i.test(value)) {
+    const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^A-Za-zА-Яа-яЁё])/i);
     return Number(bedroomMatch[2]) + 1;
+  }
+
+  if (/(^|[^\d])([1-4])\s*-?\s*стаен(?:$|[^A-Za-zА-Яа-яЁё])/i.test(value)) {
+    const roomTypeMatch = value.match(/(^|[^\d])([1-4])\s*-?\s*стаен(?:$|[^A-Za-zА-Яа-яЁё])/i);
+    return Number(roomTypeMatch[2]);
   }
 
   if (/(една|две|три)\s+спалн/i.test(value)) {
@@ -864,7 +872,7 @@ function extractRooms(text) {
   }
 
   const match =
-    value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^\p{L}])/iu) ||
+    value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^A-Za-zА-Яа-яЁё])/i) ||
     value.match(/\b([1-4])\s*(стая|стаи|rooms?)\b/i) ||
     value.match(/\b([1-4])\s*-\s*стаен\b/i) ||
     value.match(/\b([1-4])\s+стаен\b/i);
@@ -939,7 +947,7 @@ function extractFloor(text) {
 
   const match =
     value.match(/ет\.?\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
-    value.match(/етаж\s*([0-9]{1,2})\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
+    value.match(/етаж\s*([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*(?:от|\/)\s*[0-9]{1,2}/i) ||
     value.match(/номер\s+на\s+етажа\D{0,30}([0-9]{1,2})\s*етаж/i) ||
     value.match(/етаж\D{0,20}([0-9]{1,2})\s*етаж/i) ||
     value.match(/(?:^|[^\d])([0-9]{1,2})\s*(?:-?\s*(?:ви|ри|ти|и))?\s*етаж/i) ||
@@ -1261,6 +1269,7 @@ function extractExternalPropertyIntelligence(text) {
   const layout = [];
   const amenities = [];
   const intelligence = [];
+  let furnishing_status = "";
 
   const add = (list, label) => {
     if (label && !list.includes(label)) list.push(label);
@@ -1285,6 +1294,10 @@ function extractExternalPropertyIntelligence(text) {
   if (/видеонаблюдение|охрана|24\/7|24 часа/.test(normalized)) add(amenities, "видеонаблюдение / охрана");
   if (/паркинг/.test(normalized)) add(amenities, "паркинг");
 
+  if (/напълно\s+обзаведен|обзаведен\s+и\s+оборудван|обзаведен|furnished/i.test(normalized)) {
+    furnishing_status = "Обзаведен";
+  }
+
   const rawText = String(text || "");
   let maintenance_fee_text = "";
 
@@ -1298,6 +1311,10 @@ function extractExternalPropertyIntelligence(text) {
     maintenance_fee_text = maintenanceMatch
       ? cleanText(maintenanceMatch[0]).slice(0, 90)
       : "";
+  }
+
+  if (!maintenance_fee_text && /такса\s+поддръжка/i.test(rawText)) {
+    maintenance_fee_text = "Има такса поддръжка";
   }
 
   if (maintenance_fee_text) {
@@ -1316,6 +1333,7 @@ function extractExternalPropertyIntelligence(text) {
     layout_details: layout,
     complex_amenities: amenities,
     maintenance_fee_text,
+    furnishing_status,
     external_intelligence: intelligence
   };
 }
@@ -1538,6 +1556,14 @@ function extractListingFeatures(text) {
 
 function detectConstructionStatus(text) {
   const normalized = normalize(text);
+
+  if (
+    /въведен\s+в\s+експлоатация/i.test(normalized) ||
+    /въведена\s+в\s+експлоатация/i.test(normalized) ||
+    /разрешение\s+за\s+ползване/i.test(normalized)
+  ) {
+    return "introduced";
+  }
 
   if (
     /пред\s+акт\s*16/i.test(normalized) ||
