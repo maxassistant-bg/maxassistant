@@ -89,7 +89,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v35_imot_structured_category_urls";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v36_realistimo_reader_offers";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -642,9 +642,16 @@ function getRealistimoLocationSlug(location) {
 }
 
 function getRealistimoPropertyPath(propertyType) {
-  if (!propertyType) return "/properties";
+  if (!propertyType || !propertyType.rooms) return "/apartamenti";
 
-  return "/apartments";
+  const paths = {
+    1: "/ednostaini-apartamenti",
+    2: "/dvustaini-apartamenti",
+    3: "/tristaini-apartamenti",
+    4: "/chetiristaini-apartamenti"
+  };
+
+  return paths[propertyType.rooms] || "/apartamenti";
 }
 
 function extractListingUrlsFromSearchPage(source, html, pageUrl) {
@@ -1107,10 +1114,7 @@ function isConcreteListingUrl(url, source) {
   }
 
   if (source.domain === "realistimo.com") {
-    return (
-      /\/bg\/(buy|property|properties)\/[^/?#]+/i.test(lower) &&
-      !lower.includes("/bg/buy?")
-    );
+    return /\/bg\/buy\/offer-[a-z0-9-]+\/?$/i.test(lower);
   }
 
   return false;
@@ -1133,7 +1137,11 @@ function isSearchOrCategoryUrl(url, source) {
   }
 
   if (source.domain === "realistimo.com") {
-    return lower.includes("/bg/buy?") || lower.includes("/bg/properties?");
+    return (
+      lower.includes("/bg/buy?") ||
+      lower.includes("/bg/properties?") ||
+      !/\/bg\/buy\/offer-[a-z0-9-]+\/?$/i.test(lower)
+    );
   }
 
   return false;
@@ -1301,6 +1309,35 @@ function extractAnchors(html, baseUrl) {
     });
   }
 
+  const markdownRegex = /\[([\s\S]*?)\]\((https?:\/\/[^)\s]+)\)/gi;
+
+  while ((match = markdownRegex.exec(html)) !== null) {
+    const text = match[1] || "";
+    const url = toAbsoluteUrl(match[2] || "", baseUrl);
+
+    if (!url) continue;
+
+    anchors.push({
+      rawHref: match[2] || "",
+      url,
+      text: cleanText(text)
+    });
+  }
+
+  const markdownUrlRegex = /\]\((https?:\/\/[^)\s]+)\)/gi;
+
+  while ((match = markdownUrlRegex.exec(html)) !== null) {
+    const url = toAbsoluteUrl(match[1] || "", baseUrl);
+
+    if (!url) continue;
+
+    anchors.push({
+      rawHref: match[1] || "",
+      url,
+      text: "realistimo offer"
+    });
+  }
+
   return anchors;
 }
 
@@ -1410,6 +1447,9 @@ function extractTitle(html) {
   const og = extractMeta(html, "og:title");
   if (og) return og;
 
+  const readerTitle = String(html || "").match(/^Title:\s*(.+)$/m);
+  if (readerTitle) return decodeHtml(readerTitle[1].trim());
+
   const match = String(html || "").match(/<title[^>]*>([\s\S]*?)<\/title>/i);
 
   return match ? decodeHtml(stripHtml(match[1]).trim()) : "";
@@ -1436,6 +1476,14 @@ function extractImage(html, pageUrl = "") {
 
   if (image) {
     image = toAbsoluteUrl(image, pageUrl);
+  }
+
+  if (!image) {
+    const markdownImage = String(html || "").match(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/i);
+
+    if (markdownImage) {
+      image = toAbsoluteUrl(markdownImage[1], pageUrl);
+    }
   }
 
   if (!image) {
@@ -1480,6 +1528,10 @@ function isLikelyImageUrl(url) {
 }
 
 async function fetchText(url) {
+  if (isRealistimoUrl(url)) {
+    return fetchReaderText(url);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -1493,7 +1545,13 @@ async function fetchText(url) {
       }
     });
 
-    if (!response.ok) return "";
+    if (!response.ok) {
+      if (isRealistimoUrl(url)) {
+        return fetchReaderText(url);
+      }
+
+      return "";
+    }
 
     const bytes = await response.arrayBuffer();
     const contentType = response.headers.get("content-type") || "";
@@ -1503,12 +1561,53 @@ async function fetchText(url) {
       sample.match(/charset=["']?([^"'>\s;]+)/i);
     const charset = charsetMatch ? charsetMatch[1].toLowerCase() : "utf-8";
 
-    if (charset.includes("windows-1251") || charset.includes("cp1251")) {
-      return new TextDecoder("windows-1251").decode(bytes);
+    const text = charset.includes("windows-1251") || charset.includes("cp1251")
+      ? new TextDecoder("windows-1251").decode(bytes)
+      : new TextDecoder("utf-8").decode(bytes);
+
+    if (isRealistimoUrl(url) && /just a moment|cf-browser-verification|cloudflare/i.test(text.slice(0, 3000))) {
+      return fetchReaderText(url);
     }
 
-    return new TextDecoder("utf-8").decode(bytes);
+    return text;
   } catch (error) {
+    if (isRealistimoUrl(url)) {
+      return fetchReaderText(url);
+    }
+
+    return "";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function isRealistimoUrl(url) {
+  try {
+    return new URL(url).hostname.toLowerCase().endsWith("realistimo.com");
+  } catch {
+    return false;
+  }
+}
+
+async function fetchReaderText(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const readerUrl = `https://r.jina.ai/http://r.jina.ai/http://${url}`;
+
+  try {
+    const response = await fetch(readerUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; MaxAssistantBot/1.0; +https://newhomebulgaria.com)",
+        "Accept": "text/plain,text/markdown,*/*;q=0.8",
+        "Accept-Language": "bg-BG,bg;q=0.9,en;q=0.8"
+      }
+    });
+
+    if (!response.ok) return "";
+
+    return await response.text();
+  } catch {
     return "";
   } finally {
     clearTimeout(timeout);
