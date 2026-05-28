@@ -1390,6 +1390,10 @@ function extractMeta(html, name) {
 function extractImage(html, pageUrl = "") {
   let image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
 
+  if (image) {
+    image = toAbsoluteUrl(image, pageUrl);
+  }
+
   if (!image) {
     const imgRegex = /<img[^>]+(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["'][^>]*>/gi;
     let match;
@@ -1411,7 +1415,24 @@ function extractImage(html, pageUrl = "") {
     }
   }
 
-  return image;
+  return isLikelyImageUrl(image) ? image : "";
+}
+
+function isLikelyImageUrl(url) {
+  const lower = String(url || "").toLowerCase();
+
+  if (!/^https?:\/\//i.test(lower)) return false;
+  if (lower.includes("logo")) return false;
+  if (lower.includes("icon")) return false;
+  if (lower.includes("sprite")) return false;
+  if (lower.includes("placeholder")) return false;
+  if (lower.includes("blank")) return false;
+
+  return /\.(jpg|jpeg|png|webp|gif)(?:[?#].*)?$/i.test(lower) ||
+    lower.includes("/photos") ||
+    lower.includes("/photo") ||
+    lower.includes("/images") ||
+    lower.includes("/image");
 }
 
 async function fetchText(url) {
