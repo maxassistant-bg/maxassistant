@@ -952,7 +952,7 @@ function externalExtractArea(text) {
 function externalExtractRooms(text) {
   const value = String(text || "").toLowerCase();
 
-  const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^\p{L}])/iu);
+  const bedroomMatch = value.match(/(^|[^\d])([1-4])\s*(спалня|спални|bedrooms?)(?:$|[^A-Za-zА-Яа-яЁё])/i);
   if (bedroomMatch) return String(Number(bedroomMatch[2]) + 1);
 
   const wordBedroomMatch = value.match(/(една|две|три)\s+спалн/i);
@@ -961,11 +961,11 @@ function externalExtractRooms(text) {
     if (bedroomCount) return String(bedroomCount + 1);
   }
 
-  const roomTypeMatch = value.match(/(^|[^\d])([1-4])\s*-?\s*стаен(?:$|[^\p{L}])/iu);
+  const roomTypeMatch = value.match(/(^|[^\d])([1-4])\s*-?\s*стаен(?:$|[^A-Za-zА-Яа-яЁё])/i);
   if (roomTypeMatch) return roomTypeMatch[2];
 
   if (/студио|едностаен|studio/.test(value)) return "1";
-  const roomMatch = value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^\p{L}])/iu);
+  const roomMatch = value.match(/(^|[^\d])([1-4])\s*(стая|стаи)(?:$|[^A-Za-zА-Яа-яЁё])/i);
   if (roomMatch) return roomMatch[2];
   if (/\b1\s*(стая|room)\b/i.test(value)) return "1";
   if (/двустаен|една спалня|1 спалня|one bedroom/.test(value)) return "2";
