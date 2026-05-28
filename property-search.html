@@ -876,6 +876,26 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function getDisplayImageUrl(imageUrl) {
+  const value = String(imageUrl || "").trim();
+
+  if (!value) return "";
+
+  try {
+    const parsed = new URL(value, window.location.href);
+    const currentHost = window.location.hostname.toLowerCase();
+    const imageHost = parsed.hostname.toLowerCase();
+
+    if (!imageHost || imageHost === currentHost) {
+      return parsed.toString();
+    }
+
+    return `/api/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
+  } catch {
+    return "";
+  }
+}
+
 function buildExternalDebugHtml(data, query) {
   if (!data) return "";
   if (!new URLSearchParams(window.location.search).has("debugExternal")) return "";
@@ -1431,11 +1451,14 @@ function renderResultGroup(title, description, items) {
 }
 
 function renderPropertyCard(item) {
+  const displayImage = getDisplayImageUrl(item.image);
+  const imageAlt = escapeHtml(item.complex || item.title || "Снимка на имота");
+
   return `
     <div class="card property-card">
 
-      ${item.image ? `
-        <img src="${item.image}" alt="${item.complex}" class="property-image">
+      ${displayImage ? `
+        <img src="${escapeHtml(displayImage)}" alt="${imageAlt}" class="property-image" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">
       ` : ""}
 
       <div class="property-card-main">
