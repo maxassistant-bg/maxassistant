@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v42_realistimo_clean_direct_titles";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v43_balanced_relevance_scoring";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -665,7 +665,7 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
       if (conflict || (!exactType && !roomsMatch)) continue;
     }
 
-    let score = source.priority / 20 + 85;
+    let score = source.priority / 20;
     const reasons = ["резултатът е извлечен от конкретна Realistimo обява в списъка"];
 
     if (queryIntent.location) {
@@ -686,6 +686,16 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
         const overBudgetRatio = (price - queryIntent.budget) / queryIntent.budget;
         score -= overBudgetRatio > 0.25 ? 45 : 18;
         reasons.push("цената е над бюджета, но обявата е близка възможност");
+      }
+    }
+
+    if (queryIntent.minArea && area) {
+      if (area >= queryIntent.minArea) {
+        score += 14;
+        reasons.push("площта е над зададения минимум");
+      } else {
+        score -= 12;
+        reasons.push("площта е под зададения минимум");
       }
     }
 
