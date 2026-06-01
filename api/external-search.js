@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v47_bathroom_extraction";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v49_realistimo_sunny_beach_stable";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -463,6 +463,10 @@ async function searchPortalWithDetailPages(source, originalQuery, queryIntent, d
     return strictResults.slice(0, MAX_RESULTS_PER_SOURCE);
   }
 
+  if (source.domain === "realistimo.com" && queryIntent.constructionRequirement) {
+    return [];
+  }
+
   const relaxedIntent = {
     ...queryIntent
   };
@@ -621,7 +625,7 @@ function buildPortalSearchUrls(source, originalQuery, queryIntent) {
 }
 
 function getMaxDetailFetchesForSource(source) {
-  if (source && source.domain === "realistimo.com") return 4;
+  if (source && source.domain === "realistimo.com") return 8;
 
   return MAX_DETAIL_FETCHES_PER_SOURCE;
 }
@@ -788,7 +792,7 @@ function getRealistimoLocationSlug(location) {
 
   const slugs = {
     "sozopol": "sozopol-burgas-bg",
-    "sunny beach": "sunny-beach-burgas-bg",
+    "sunny beach": "slnchev-bryag-burgas-bg",
     "sveti vlas": "sveti-vlas-burgas-bg",
     "burgas": "burgas-burgas-bg",
     "chernomorets": "chernomorets-burgas-bg",
