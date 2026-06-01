@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v44_strict_act16_filter";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v46_imot_description_act16_filter";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -885,7 +885,10 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
 
 function extractDetailFromHtml(html, url) {
   const title = cleanText(extractTitle(html) || cleanTitleFromUrl(url));
-  const description = cleanText(extractMeta(html, "description"));
+  const description = cleanText([
+    extractMeta(html, "description"),
+    extractPropertyDescription(html)
+  ].filter(Boolean).join(" "));
   const image = extractImage(html, url);
   const tableText = extractTableText(html);
   const clean = cleanText(stripHtml(html)).slice(0, 9000);
@@ -1582,6 +1585,19 @@ function extractTableText(html) {
   return tables.join(" ").slice(0, 5000);
 }
 
+function extractPropertyDescription(html) {
+  const source = String(html || "");
+  const imotDescription = source.match(
+    /<h2[^>]*>\s*Описание\s+на\s+имота:\s*<\/h2>[\s\S]*?<div[^>]+class=["']text["'][^>]*>([\s\S]*?)<\/div>/i
+  );
+
+  if (imotDescription) {
+    return stripHtml(imotDescription[1]);
+  }
+
+  return "";
+}
+
 function makeDetailExcerpt(detail) {
   const parts = [];
 
@@ -1971,17 +1987,13 @@ function detectConstructionStatus(text) {
   const normalized = normalize(text);
 
   if (
-    /въведен\s+в\s+експлоатация/i.test(normalized) ||
-    /въведена\s+в\s+експлоатация/i.test(normalized) ||
-    /разрешение\s+за\s+ползване/i.test(normalized)
-  ) {
-    return "introduced";
-  }
-
-  if (
+    /без\s+акт\s*16/i.test(normalized) ||
+    /пред\s+акт\s*1[456]/i.test(normalized) ||
     /пред\s+акт\s*16/i.test(normalized) ||
     /акт\s*16\s*(до|очаква|се\s+очаква|предстои)/i.test(normalized) ||
-    /(очаква|предстои|следва)\s+акт\s*16/i.test(normalized)
+    /(очаква|предстои|следва)\s+(издаване\s+на\s+)?акт\s*16/i.test(normalized) ||
+    /ще\s+бъде\s+въведен[ао]?\s+в\s+експлоатация/i.test(normalized) ||
+    /очаква\s+се\s+(издаване\s+на\s+)?акт\s*16/i.test(normalized)
   ) {
     return "pre_act16";
   }
@@ -2006,6 +2018,14 @@ function detectConstructionStatus(text) {
     /разрешение\s+за\s+строеж/i.test(normalized)
   ) {
     return "under_construction";
+  }
+
+  if (
+    /въведен\s+в\s+експлоатация/i.test(normalized) ||
+    /въведена\s+в\s+експлоатация/i.test(normalized) ||
+    /разрешение\s+за\s+ползване/i.test(normalized)
+  ) {
+    return "introduced";
   }
 
   if (
