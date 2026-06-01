@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v43_balanced_relevance_scoring";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v44_strict_act16_filter";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -107,7 +107,8 @@ function buildExternalCacheKey(query, queryIntent) {
     queryIntent.propertyType ? queryIntent.propertyType.canonical : "",
     queryIntent.rooms || "",
     queryIntent.budget || "",
-    queryIntent.minArea || ""
+    queryIntent.minArea || "",
+    queryIntent.constructionRequirement || ""
   ];
 
   return parts
@@ -247,7 +248,11 @@ module.exports = async function handler(req, res) {
 
     const allResults = (await Promise.all(sourceRuns)).flat();
 
-    const results = deduplicateResults(allResults)
+    const results = deduplicateResults(
+      allResults.filter(result =>
+        matchesConstructionRequirement(result.construction_status, queryIntent.constructionRequirement)
+      )
+    )
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return b.source_priority - a.source_priority;
@@ -263,6 +268,7 @@ module.exports = async function handler(req, res) {
       detected_property_type: queryIntent.propertyType ? queryIntent.propertyType.canonical : null,
       budget: queryIntent.budget,
       min_area: queryIntent.minArea,
+      construction_requirement: queryIntent.constructionRequirement,
       checked_sources: diagnostics,
       total: results.length,
       results,
@@ -362,6 +368,10 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
   if (!html) return null;
 
   const detail = extractDetailFromHtml(html, url);
+  if (!matchesConstructionRequirement(detail.construction_status, queryIntent.constructionRequirement)) {
+    return null;
+  }
+
   const scored = scoreDetailResult(detail, queryIntent, source, baseScore + 35, "trusted_site");
 
   if (scored.score < MIN_NEWHOME_SCORE) return null;
@@ -654,6 +664,11 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
     const price = extractPrice(title);
     const area = extractArea(title);
     const rooms = extractRooms(title);
+    const construction_status = detectConstructionStatus([title, listingBlock].join(" "));
+
+    if (!matchesConstructionRequirement(construction_status, queryIntent.constructionRequirement)) {
+      continue;
+    }
 
     if (queryIntent.propertyType) {
       const conflict = detectConflictingPropertyType(title, queryIntent.propertyType);
@@ -726,7 +741,7 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
       complex_amenities: [],
       maintenance_fee_text: "",
       furnishing_status: "",
-      construction_status: "",
+      construction_status,
       external_intelligence: ["Realistimo обява, извлечена директно от списъка с резултати"],
       beach_evidence: null,
       score: Math.round(score * 10) / 10
@@ -809,6 +824,10 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
   if (!html) return null;
 
   const detail = extractDetailFromHtml(html, url);
+  if (!matchesConstructionRequirement(detail.construction_status, queryIntent.constructionRequirement)) {
+    return null;
+  }
+
   const concreteDetail = source.domain === "realistimo.com"
     ? isConcreteRealistimoDetailPage(detail, url, queryIntent)
     : isConcreteDetailPage(detail, url, source, queryIntent);
@@ -1057,8 +1076,34 @@ function parseQueryIntent(query) {
     propertyType,
     rooms,
     budget: extractBudget(normalized),
-    minArea: extractMinArea(normalized)
+    minArea: extractMinArea(normalized),
+    constructionRequirement: extractConstructionRequirement(normalized)
   };
+}
+
+function extractConstructionRequirement(text) {
+  const normalized = normalize(text);
+
+  if (
+    /разрешение\s+за\s+ползване/i.test(normalized) ||
+    /акт\s*16/i.test(normalized) ||
+    /act\s*16/i.test(normalized) ||
+    /въведен[ао]?\s+в\s+експлоатация/i.test(normalized)
+  ) {
+    return "act16";
+  }
+
+  return "";
+}
+
+function matchesConstructionRequirement(status, requirement) {
+  if (!requirement) return true;
+
+  if (requirement === "act16") {
+    return status === "act16" || status === "introduced";
+  }
+
+  return true;
 }
 
 function extractRooms(text) {
