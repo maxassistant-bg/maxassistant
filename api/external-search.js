@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v49_realistimo_sunny_beach_stable";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v50_strict_budget_filter";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -250,7 +250,8 @@ module.exports = async function handler(req, res) {
 
     const results = deduplicateResults(
       allResults.filter(result =>
-        matchesConstructionRequirement(result.construction_status, queryIntent.constructionRequirement)
+        matchesConstructionRequirement(result.construction_status, queryIntent.constructionRequirement) &&
+        matchesBudgetRequirement(result.price, queryIntent.budget)
       )
     )
       .sort((a, b) => {
@@ -1129,6 +1130,12 @@ function matchesConstructionRequirement(status, requirement) {
   }
 
   return true;
+}
+
+function matchesBudgetRequirement(price, budget) {
+  if (!budget || !price) return true;
+
+  return Number(price) <= Number(budget);
 }
 
 function extractRooms(text) {
