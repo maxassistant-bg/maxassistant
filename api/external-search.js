@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v50_strict_budget_filter";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v55_newhome_gentle_listing_fallback";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -309,7 +309,7 @@ async function searchNewHomeTrustedSite(source, originalQuery, queryIntent, diag
     .filter(url => isNewHomeRelevantUrl(url, queryIntent))
     .map(url => ({ url, score: scoreNewHomeUrl(url, queryIntent) }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 14);
+    .slice(0, 6);
 
   diag.fetched_detail_pages = ranked.length;
 
@@ -326,6 +326,10 @@ async function searchNewHomeTrustedSite(source, originalQuery, queryIntent, diag
 
 async function discoverNewHomeUrls(source) {
   const sitemapPaths = ["/sitemap.xml", "/sitemap_index.xml", "/wp-sitemap.xml"];
+  const fallbackPaths = [
+    "/",
+    "/listing-search-results/?max_price=10000000&max_m2=10000000"
+  ];
   const found = [];
   const visited = new Set();
 
@@ -333,6 +337,21 @@ async function discoverNewHomeUrls(source) {
     const urls = await readSitemapRecursive(source.baseUrl.replace(/\/$/, "") + path, source, visited, 0);
     found.push(...urls);
     if (found.length >= 180) break;
+  }
+
+  for (const path of fallbackPaths) {
+    const pageUrl = source.baseUrl.replace(/\/$/, "") + path;
+    const html = await fetchText(pageUrl);
+    if (!html) continue;
+
+    found.push(
+      ...extractAnchors(html, pageUrl)
+        .map(anchor => anchor.url)
+        .filter(url => isAllowedUrl(url, source.domain))
+        .filter(url => !isBlockedUrl(url))
+        .filter(url => /\/listing\//i.test(url))
+        .filter(url => isNewHomeRelevantUrl(url, {}))
+    );
   }
 
   return unique(found).slice(0, 180);
