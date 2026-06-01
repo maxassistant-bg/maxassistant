@@ -192,6 +192,38 @@
   max-width: 820px;
 }
 
+.external-search-loading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 104px;
+}
+
+.external-search-spinner {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 3px solid rgba(216, 184, 255, 0.20);
+  border-top-color: #e879f9;
+  border-right-color: #a855f7;
+  border-radius: 50%;
+  animation: external-search-spin 0.85s linear infinite;
+}
+
+.external-search-loading h3 {
+  margin: 0 0 6px;
+}
+
+.external-search-loading p {
+  margin: 0;
+}
+
+@keyframes external-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 .external-debug-box {
   margin-top: 18px;
@@ -1286,10 +1318,13 @@ async function searchExternalSources(query, decision = null) {
   }
 
   externalBox.innerHTML = `
-    <div class="card external-search-card">
-      <span class="external-decision-label">External discovery layer</span>
-      <h3>Проверка в одобрените външни източници...</h3>
-      <p>${decision ? decision.message : "MaxAssistant проверява външните източници като допълнителен discovery layer."}</p>
+    <div class="card external-search-card external-search-loading" role="status" aria-live="polite">
+      <div class="external-search-spinner" aria-hidden="true"></div>
+      <div>
+        <span class="external-decision-label">MaxAssistant търси</span>
+        <h3>Проверяваме наличните обяви...</h3>
+        <p>Моля, изчакайте за момент.</p>
+      </div>
     </div>
   `;
 
@@ -1584,20 +1619,9 @@ function renderPropertyCard(item) {
 
 function renderResults(results) {
   const resultsBox = document.getElementById("results");
-  const aiStatus = buildAISearchStatus(results);
 
   if (!results.length) {
     resultsBox.innerHTML = `
-      ${aiStatus}
-
-      <div class="card">
-        <h3>Няма точен резултат в локалната база</h3>
-        <p>
-          MaxAssistant провери локалната база на NewHome Bulgaria, но не намери достатъчно силно съвпадение.
-          Следваща стъпка е проверка във външния discovery layer.
-        </p>
-      </div>
-
       <div id="externalResults" class="external-results"></div>
     `;
     return;
@@ -1618,8 +1642,6 @@ function renderResults(results) {
   });
 
   resultsBox.innerHTML = `
-    ${aiStatus}
-
     ${renderResultGroup(
       "Най-добри съвпадения",
       "Това са имотите, които най-силно отговарят на зададените критерии и имат най-висока AI оценка.",
