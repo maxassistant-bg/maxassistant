@@ -90,7 +90,7 @@ const MIN_PORTAL_FALLBACK_SCORE = 35;
 
 const EXTERNAL_DISCOVERY_CACHE_TTL_MS = 12 * 60 * 1000;
 const EXTERNAL_DISCOVERY_CACHE_MAX_ITEMS = 80;
-const EXTERNAL_DISCOVERY_CACHE_VERSION = "v46_imot_description_act16_filter";
+const EXTERNAL_DISCOVERY_CACHE_VERSION = "v47_bathroom_extraction";
 
 const externalDiscoveryCache =
   globalThis.__MAX_ASSISTANT_EXTERNAL_DISCOVERY_CACHE__ ||
@@ -384,6 +384,8 @@ async function fetchTrustedSiteDetail(source, url, queryIntent, baseScore) {
     price: detail.price || null,
     area: detail.area || null,
     rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
+    bathrooms: detail.bathrooms || null,
+    toilets: detail.toilets || null,
     floor: detail.floor === 0 || detail.floor ? detail.floor : "",
     source: source.name,
     source_domain: source.domain,
@@ -664,6 +666,8 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
     const price = extractPrice(title);
     const area = extractArea(title);
     const rooms = extractRooms(title);
+    const bathrooms = extractCount([title, listingBlock].join(" "), ["бани", "баня", "bathrooms?", "baths?"]);
+    const toilets = extractCount([title, listingBlock].join(" "), ["тоалетни", "тоалетна", "toilets?", "wc"]);
     const construction_status = detectConstructionStatus([title, listingBlock].join(" "));
 
     if (!matchesConstructionRequirement(construction_status, queryIntent.constructionRequirement)) {
@@ -726,6 +730,8 @@ function extractRealistimoResultsFromSearchPage(source, html, queryIntent) {
       price: price || null,
       area: area || null,
       rooms: rooms || null,
+      bathrooms: bathrooms || null,
+      toilets: toilets || null,
       floor: extractFloor(title) || "",
       source: source.name,
       source_domain: source.domain,
@@ -857,6 +863,8 @@ async function fetchPortalListingDetail(source, url, queryIntent, options = {}) 
     price: detail.price || null,
     area: detail.area || null,
     rooms: extractRooms([detail.title, detail.description, detail.clean, detail.tableText].join(" ")) || null,
+    bathrooms: detail.bathrooms || null,
+    toilets: detail.toilets || null,
     floor: detail.floor === 0 || detail.floor ? detail.floor : "",
     source: source.name,
     source_domain: source.domain,
@@ -896,6 +904,14 @@ function extractDetailFromHtml(html, url) {
   const price = extractPrice([title, description, clean, tableText].join(" "));
   const area = extractArea([title, description, clean, tableText].join(" "));
   const floor = extractFloor([title, description, clean, tableText].join(" "));
+  const bathrooms = extractCount(
+    [title, description, tableText, clean].join(" "),
+    ["бани", "баня", "bathrooms?", "baths?"]
+  );
+  const toilets = extractCount(
+    [title, description, tableText, clean].join(" "),
+    ["тоалетни", "тоалетна", "toilets?", "wc"]
+  );
   const intelligence = extractExternalPropertyIntelligence([
     title,
     description,
@@ -928,6 +944,8 @@ function extractDetailFromHtml(html, url) {
     price,
     area,
     floor,
+    bathrooms,
+    toilets,
     furnishing_status: intelligence.furnishing_status || "",
     construction_status,
     ...intelligence,
@@ -1140,6 +1158,35 @@ function extractRooms(text) {
     value.match(/\b([1-4])\s+стаен\b/i);
 
   return match ? Number(match[2] || match[1]) : null;
+}
+
+function extractCount(text, nouns) {
+  const value = String(text || "").toLowerCase();
+  const countWords = "(една|един|едно|две|два|три|четири|пет)";
+
+  for (const noun of nouns) {
+    const afterNumber = value.match(new RegExp(`(?:^|[^\\d])([0-9]{1,2})\\s*${noun}(?:$|[^A-Za-zА-Яа-яЁё])`, "i"));
+    if (afterNumber) return Number(afterNumber[1]);
+
+    const beforeNumber = value.match(new RegExp(`${noun}\\s*[:\\-]?\\s*([0-9]{1,2})(?:$|[^\\d])`, "i"));
+    if (beforeNumber) return Number(beforeNumber[1]);
+
+    const wordMatch = value.match(new RegExp(`(?:^|\\s)${countWords}\\s*${noun}(?:$|[^A-Za-zА-Яа-яЁё])`, "i"));
+    if (wordMatch) {
+      return {
+        "една": 1,
+        "един": 1,
+        "едно": 1,
+        "две": 2,
+        "два": 2,
+        "три": 3,
+        "четири": 4,
+        "пет": 5
+      }[wordMatch[1].toLowerCase()] || null;
+    }
+  }
+
+  return "";
 }
 
 function extractBudget(text) {
